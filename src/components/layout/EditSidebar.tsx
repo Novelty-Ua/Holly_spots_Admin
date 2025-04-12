@@ -5,14 +5,40 @@ import { Input } from '@/components/ui/input';
 import { X, Save } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
-import { getTableColumns, createRecord, updateRecord, fetchRecordById } from '@/services/supabaseService';
+import { 
+  getTableColumns, 
+  createRecord, 
+  updateRecord, 
+  fetchRecordById, 
+  TableName,
+  fetchRelatedRecords,
+  fetchRecordRelations,
+  updateRecordRelations
+} from '@/services/supabaseService';
 import { Skeleton } from '@/components/ui/skeleton';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface EditSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   record: any | null;
-  table: string;
+  table: TableName;
 }
 
 export const EditSidebar: React.FC<EditSidebarProps> = ({ 
@@ -25,42 +51,61 @@ export const EditSidebar: React.FC<EditSidebarProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('ru');
+  const [relatedEntities, setRelatedEntities] = useState<any>({});
+  const [selectedRelations, setSelectedRelations] = useState<any>({});
   
   const { toast } = useToast();
   
   // Получаем колонки для текущей таблицы
   const columns = getTableColumns(table, selectedLanguage);
   
-  // Загружаем данные записи при открытии сайдбара
+  // Загружаем данные записи и связанные сущности при открытии сайдбара
   useEffect(() => {
-    if (isOpen && record && record.id) {
-      loadRecord();
-    } else if (isOpen && !record) {
-      // Новая запись, инициализируем пустыми значениями
-      const emptyData: any = {};
-      columns.forEach(column => {
-        if (column.isJsonb) {
-          emptyData[column.key] = { ru: '', en: '', hi: '' };
-        } else if (column.isArray) {
-          emptyData[column.key] = [];
-        } else {
-          emptyData[column.key] = '';
-        }
-      });
-      setFormData(emptyData);
+    if (isOpen) {
+      loadData();
     }
   }, [isOpen, record, table, selectedLanguage]);
   
-  const loadRecord = async () => {
+  const loadData = async () => {
     try {
       setIsLoading(true);
-      const data = await fetchRecordById(table, record.id);
-      setFormData(data || {});
+      
+      // Получаем связанные сущности для выбора в форме
+      if (['spots', 'routes', 'events'].includes(table)) {
+        const relatedData = await fetchRelatedRecords(table as TableName);
+        setRelatedEntities(relatedData);
+      }
+      
+      if (record && record.id) {
+        // Загружаем данные записи
+        const data = await fetchRecordById(table, record.id);
+        setFormData(data || {});
+        
+        // Если это таблица со связями - загружаем связи
+        if (['spots', 'routes', 'events'].includes(table)) {
+          const relations = await fetchRecordRelations(table as TableName, record.id);
+          setSelectedRelations(relations);
+        }
+      } else {
+        // Новая запись, инициализируем пустыми значениями
+        const emptyData: any = {};
+        columns.forEach(column => {
+          if (column.isJsonb) {
+            emptyData[column.key] = { ru: '', en: '', hi: '' };
+          } else if (column.isArray) {
+            emptyData[column.key] = [];
+          } else {
+            emptyData[column.key] = '';
+          }
+        });
+        setFormData(emptyData);
+        setSelectedRelations({});
+      }
     } catch (error) {
-      console.error('Error loading record:', error);
+      console.error('Error loading data:', error);
       toast({
         title: "Ошибка",
-        description: "Не удалось загрузить данные записи",
+        description: "Не удалось загрузить данные",
         variant: "destructive",
       });
     } finally {
@@ -85,6 +130,13 @@ export const EditSidebar: React.FC<EditSidebarProps> = ({
     }
   };
   
+  const handleRelationChange = (entityType: string, entityIds: string[]) => {
+    setSelectedRelations(prev => ({
+      ...prev,
+      [entityType]: entityIds
+    }));
+  };
+  
   const handleSave = async () => {
     try {
       setIsSaving(true);
@@ -97,16 +149,30 @@ export const EditSidebar: React.FC<EditSidebarProps> = ({
         delete dataToSave.id;
       }
       
+      let savedRecord;
+      
       if (record) {
         // Обновление существующей записи
-        await updateRecord(table, record.id, dataToSave);
+        savedRecord = await updateRecord(table, record.id, dataToSave);
+        
+        // Обновляем связи если нужно
+        if (['spots', 'routes', 'events'].includes(table) && Object.keys(selectedRelations).length > 0) {
+          await updateRecordRelations(table as TableName, record.id, selectedRelations);
+        }
+        
         toast({
           title: "Успешно",
           description: "Запись успешно обновлена",
         });
       } else {
         // Создание новой записи
-        await createRecord(table, dataToSave);
+        savedRecord = await createRecord(table, dataToSave);
+        
+        // Обновляем связи для новой записи если нужно
+        if (['spots', 'routes', 'events'].includes(table) && Object.keys(selectedRelations).length > 0 && savedRecord) {
+          await updateRecordRelations(table as TableName, savedRecord.id, selectedRelations);
+        }
+        
         toast({
           title: "Успешно",
           description: "Запись успешно создана",
@@ -116,9 +182,7 @@ export const EditSidebar: React.FC<EditSidebarProps> = ({
       // Закрываем сайдбар и сбрасываем форму
       onClose();
       setFormData({});
-      
-      // Перезагрузка данных в основной таблице
-      // Это нужно реализовать через контекст или колбэк
+      setSelectedRelations({});
       
     } catch (error) {
       console.error('Error saving record:', error);
@@ -130,6 +194,202 @@ export const EditSidebar: React.FC<EditSidebarProps> = ({
     } finally {
       setIsSaving(false);
     }
+  };
+  
+  // Генерация полей для выбора связанных сущностей
+  const renderRelationshipFields = () => {
+    if (isLoading) return null;
+    
+    switch (table) {
+      case 'spots':
+        return (
+          <>
+            {relatedEntities.routes && relatedEntities.routes.length > 0 && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-1">Связанные маршруты</label>
+                <div className="border border-border rounded p-2 max-h-40 overflow-y-auto">
+                  {relatedEntities.routes.map((route: any) => (
+                    <div key={route.id} className="flex items-center mb-1">
+                      <Checkbox 
+                        id={`route-${route.id}`}
+                        checked={selectedRelations.routes?.includes(route.id)}
+                        onCheckedChange={(checked) => {
+                          const routes = [...(selectedRelations.routes || [])];
+                          if (checked) {
+                            routes.push(route.id);
+                          } else {
+                            const index = routes.indexOf(route.id);
+                            if (index !== -1) routes.splice(index, 1);
+                          }
+                          handleRelationChange('routes', routes);
+                        }}
+                      />
+                      <label htmlFor={`route-${route.id}`} className="ml-2 text-sm">
+                        {route.name && typeof route.name === 'object' ? route.name[selectedLanguage] || Object.values(route.name)[0] : route.name}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {relatedEntities.events && relatedEntities.events.length > 0 && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-1">Связанные события</label>
+                <div className="border border-border rounded p-2 max-h-40 overflow-y-auto">
+                  {relatedEntities.events.map((event: any) => (
+                    <div key={event.id} className="flex items-center mb-1">
+                      <Checkbox 
+                        id={`event-${event.id}`}
+                        checked={selectedRelations.events?.includes(event.id)}
+                        onCheckedChange={(checked) => {
+                          const events = [...(selectedRelations.events || [])];
+                          if (checked) {
+                            events.push(event.id);
+                          } else {
+                            const index = events.indexOf(event.id);
+                            if (index !== -1) events.splice(index, 1);
+                          }
+                          handleRelationChange('events', events);
+                        }}
+                      />
+                      <label htmlFor={`event-${event.id}`} className="ml-2 text-sm">
+                        {event.name && typeof event.name === 'object' ? event.name[selectedLanguage] || Object.values(event.name)[0] : event.name}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            break;
+            
+          case 'routes':
+            return (
+              <>
+                {relatedEntities.spots && relatedEntities.spots.length > 0 && (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium mb-1">Связанные объекты</label>
+                    <div className="border border-border rounded p-2 max-h-40 overflow-y-auto">
+                      {relatedEntities.spots.map((spot: any) => (
+                        <div key={spot.id} className="flex items-center mb-1">
+                          <Checkbox 
+                            id={`spot-${spot.id}`}
+                            checked={selectedRelations.spots?.includes(spot.id)}
+                            onCheckedChange={(checked) => {
+                              const spots = [...(selectedRelations.spots || [])];
+                              if (checked) {
+                                spots.push(spot.id);
+                              } else {
+                                const index = spots.indexOf(spot.id);
+                                if (index !== -1) spots.splice(index, 1);
+                              }
+                              handleRelationChange('spots', spots);
+                            }}
+                          />
+                          <label htmlFor={`spot-${spot.id}`} className="ml-2 text-sm">
+                            {spot.name && typeof spot.name === 'object' ? spot.name[selectedLanguage] || Object.values(spot.name)[0] : spot.name}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {relatedEntities.events && relatedEntities.events.length > 0 && (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium mb-1">Связанные события</label>
+                    <div className="border border-border rounded p-2 max-h-40 overflow-y-auto">
+                      {relatedEntities.events.map((event: any) => (
+                        <div key={event.id} className="flex items-center mb-1">
+                          <Checkbox 
+                            id={`event-${event.id}`}
+                            checked={selectedRelations.events?.includes(event.id)}
+                            onCheckedChange={(checked) => {
+                              const events = [...(selectedRelations.events || [])];
+                              if (checked) {
+                                events.push(event.id);
+                              } else {
+                                const index = events.indexOf(event.id);
+                                if (index !== -1) events.splice(index, 1);
+                              }
+                              handleRelationChange('events', events);
+                            }}
+                          />
+                          <label htmlFor={`event-${event.id}`} className="ml-2 text-sm">
+                            {event.name && typeof event.name === 'object' ? event.name[selectedLanguage] || Object.values(event.name)[0] : event.name}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                break;
+                
+              case 'events':
+                return (
+                  <>
+                    {relatedEntities.spots && relatedEntities.spots.length > 0 && (
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium mb-1">Связанные объекты</label>
+                        <div className="border border-border rounded p-2 max-h-40 overflow-y-auto">
+                          {relatedEntities.spots.map((spot: any) => (
+                            <div key={spot.id} className="flex items-center mb-1">
+                              <Checkbox 
+                                id={`spot-${spot.id}`}
+                                checked={selectedRelations.spots?.includes(spot.id)}
+                                onCheckedChange={(checked) => {
+                                  const spots = [...(selectedRelations.spots || [])];
+                                  if (checked) {
+                                    spots.push(spot.id);
+                                  } else {
+                                    const index = spots.indexOf(spot.id);
+                                    if (index !== -1) spots.splice(index, 1);
+                                  }
+                                  handleRelationChange('spots', spots);
+                                }}
+                              />
+                              <label htmlFor={`spot-${spot.id}`} className="ml-2 text-sm">
+                                {spot.name && typeof spot.name === 'object' ? spot.name[selectedLanguage] || Object.values(spot.name)[0] : spot.name}
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {relatedEntities.routes && relatedEntities.routes.length > 0 && (
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium mb-1">Связанные маршруты</label>
+                        <div className="border border-border rounded p-2 max-h-40 overflow-y-auto">
+                          {relatedEntities.routes.map((route: any) => (
+                            <div key={route.id} className="flex items-center mb-1">
+                              <Checkbox 
+                                id={`route-${route.id}`}
+                                checked={selectedRelations.routes?.includes(route.id)}
+                                onCheckedChange={(checked) => {
+                                  const routes = [...(selectedRelations.routes || [])];
+                                  if (checked) {
+                                    routes.push(route.id);
+                                  } else {
+                                    const index = routes.indexOf(route.id);
+                                    if (index !== -1) routes.splice(index, 1);
+                                  }
+                                  handleRelationChange('routes', routes);
+                                }}
+                              />
+                              <label htmlFor={`route-${route.id}`} className="ml-2 text-sm">
+                                {route.name && typeof route.name === 'object' ? route.name[selectedLanguage] || Object.values(route.name)[0] : route.name}
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    break;
+            
+                default:
+                  return null;
+              }
   };
   
   // Генерация полей формы на основе структуры таблицы
@@ -282,9 +542,10 @@ export const EditSidebar: React.FC<EditSidebarProps> = ({
           </div>
         )}
         
-        <div className="flex-1 overflow-auto p-4">
+        <ScrollArea className="flex-1 px-4 py-2">
           {renderFormFields()}
-        </div>
+          {renderRelationshipFields()}
+        </ScrollArea>
         
         <div className="p-4 border-t border-border">
           <div className="flex justify-end gap-2">

@@ -11,9 +11,12 @@ export interface QueryOptions {
   language?: string;
 }
 
+// Define allowed table names as a type to fix TypeScript errors
+export type TableName = 'countries' | 'cities' | 'spots' | 'routes' | 'events' | 'users';
+
 // Функция получения данных из таблицы с поддержкой пагинации и поиска
 export const fetchTableData = async (
-  tableName: string, 
+  tableName: TableName, 
   { page, pageSize }: PaginationOptions,
   { search, language = 'ru' }: QueryOptions = {}
 ) => {
@@ -62,7 +65,7 @@ export const fetchTableData = async (
 };
 
 // Получение одной записи по ID
-export const fetchRecordById = async (tableName: string, id: string) => {
+export const fetchRecordById = async (tableName: TableName, id: string) => {
   try {
     const { data, error } = await supabase
       .from(tableName)
@@ -80,7 +83,7 @@ export const fetchRecordById = async (tableName: string, id: string) => {
 };
 
 // Создание новой записи
-export const createRecord = async (tableName: string, record: any) => {
+export const createRecord = async (tableName: TableName, record: any) => {
   try {
     const { data, error } = await supabase
       .from(tableName)
@@ -97,7 +100,7 @@ export const createRecord = async (tableName: string, record: any) => {
 };
 
 // Обновление записи
-export const updateRecord = async (tableName: string, id: string, record: any) => {
+export const updateRecord = async (tableName: TableName, id: string, record: any) => {
   try {
     const { data, error } = await supabase
       .from(tableName)
@@ -115,7 +118,7 @@ export const updateRecord = async (tableName: string, id: string, record: any) =
 };
 
 // Удаление записи
-export const deleteRecord = async (tableName: string, id: string) => {
+export const deleteRecord = async (tableName: TableName, id: string) => {
   try {
     const { error } = await supabase
       .from(tableName)
@@ -132,21 +135,21 @@ export const deleteRecord = async (tableName: string, id: string) => {
 };
 
 // Получение колонок для таблицы
-export const getTableColumns = (tableName: string, language: string = 'ru') => {
+export const getTableColumns = (tableName: TableName, language: string = 'ru') => {
   // Определяем колонки для каждой таблицы
-  const columns: Record<string, any[]> = {
+  const columns: Record<TableName, any[]> = {
     countries: [
       { key: 'id', label: 'ID' },
       { key: 'name', label: 'Название', isJsonb: true, language },
-      { key: 'info', label: 'Информация', isJsonb: true, language },
+      { key: 'info', label: 'Информация', isJsonb: true, language, truncate: true },
       { key: 'cities_count', label: 'Количество городов' },
       { key: 'code', label: 'Код страны' },
       { key: 'images', label: 'Изображения', isArray: true }
     ],
     cities: [
       { key: 'id', label: 'ID' },
-      { key: 'name', label: 'Название' },
-      { key: 'info', label: 'Информация', isJsonb: true, language },
+      { key: 'name', label: 'Название', isJsonb: false },
+      { key: 'info', label: 'Информация', isJsonb: true, language, truncate: true },
       { key: 'spots_count', label: 'Количество объектов' },
       { key: 'routes_count', label: 'Количество маршрутов' },
       { key: 'events_count', label: 'Количество событий' },
@@ -156,7 +159,7 @@ export const getTableColumns = (tableName: string, language: string = 'ru') => {
     spots: [
       { key: 'id', label: 'ID' },
       { key: 'name', label: 'Название', isJsonb: true, language },
-      { key: 'info', label: 'Информация', isJsonb: true, language },
+      { key: 'info', label: 'Информация', isJsonb: true, language, truncate: true },
       { key: 'city', label: 'Город', foreignKey: 'cities' },
       { key: 'type', label: 'Тип' },
       { key: 'point', label: 'Координаты', isGeometry: true },
@@ -165,13 +168,13 @@ export const getTableColumns = (tableName: string, language: string = 'ru') => {
     routes: [
       { key: 'id', label: 'ID' },
       { key: 'name', label: 'Название', isJsonb: true, language },
-      { key: 'info', label: 'Информация', isJsonb: true, language },
+      { key: 'info', label: 'Информация', isJsonb: true, language, truncate: true },
       { key: 'images', label: 'Изображения', isJsonb: true }
     ],
     events: [
       { key: 'id', label: 'ID' },
       { key: 'name', label: 'Название', isJsonb: true, language },
-      { key: 'info', label: 'Информация', isJsonb: true, language },
+      { key: 'info', label: 'Информация', isJsonb: true, language, truncate: true },
       { key: 'type', label: 'Тип' },
       { key: 'time', label: 'Время' },
       { key: 'images', label: 'Изображения', isJsonb: true }
@@ -190,4 +193,244 @@ export const getTableColumns = (tableName: string, language: string = 'ru') => {
   };
   
   return columns[tableName] || [];
+};
+
+// Получение связанных записей для редактирования
+export const fetchRelatedRecords = async (tableName: TableName) => {
+  try {
+    switch (tableName) {
+      case 'spots':
+        // Для объектов нам нужны маршруты и события
+        const routesResponse = await supabase.from('routes').select('id, name').limit(100);
+        const eventsResponse = await supabase.from('events').select('id, name').limit(100);
+        
+        if (routesResponse.error) throw routesResponse.error;
+        if (eventsResponse.error) throw eventsResponse.error;
+        
+        return {
+          routes: routesResponse.data || [],
+          events: eventsResponse.data || []
+        };
+        
+      case 'routes':
+        // Для маршрутов нам нужны объекты и события
+        const spotsResponse = await supabase.from('spots').select('id, name').limit(100);
+        const routeEventsResponse = await supabase.from('events').select('id, name').limit(100);
+        
+        if (spotsResponse.error) throw spotsResponse.error;
+        if (routeEventsResponse.error) throw routeEventsResponse.error;
+        
+        return {
+          spots: spotsResponse.data || [],
+          events: routeEventsResponse.data || []
+        };
+        
+      case 'events':
+        // Для событий нам нужны объекты и маршруты
+        const eventSpotsResponse = await supabase.from('spots').select('id, name').limit(100);
+        const eventRoutesResponse = await supabase.from('routes').select('id, name').limit(100);
+        
+        if (eventSpotsResponse.error) throw eventSpotsResponse.error;
+        if (eventRoutesResponse.error) throw eventRoutesResponse.error;
+        
+        return {
+          spots: eventSpotsResponse.data || [],
+          routes: eventRoutesResponse.data || []
+        };
+        
+      default:
+        return {};
+    }
+  } catch (error) {
+    console.error(`Error fetching related records for ${tableName}:`, error);
+    throw error;
+  }
+};
+
+// Функция для получения связей для записи
+export const fetchRecordRelations = async (tableName: TableName, recordId: string) => {
+  try {
+    switch (tableName) {
+      case 'spots':
+        // Получаем связанные маршруты и события для объекта
+        const spotRoutesResponse = await supabase
+          .from('spot_route')
+          .select('route_id')
+          .eq('spot_id', recordId);
+          
+        const spotEventsResponse = await supabase
+          .from('spot_event')
+          .select('event_id')
+          .eq('spot_id', recordId);
+          
+        if (spotRoutesResponse.error) throw spotRoutesResponse.error;
+        if (spotEventsResponse.error) throw spotEventsResponse.error;
+        
+        return {
+          routes: spotRoutesResponse.data.map(item => item.route_id),
+          events: spotEventsResponse.data.map(item => item.event_id)
+        };
+        
+      case 'routes':
+        // Получаем связанные объекты и события для маршрута
+        const routeSpotsResponse = await supabase
+          .from('spot_route')
+          .select('spot_id')
+          .eq('route_id', recordId);
+          
+        const routeEventsResponse = await supabase
+          .from('route_event')
+          .select('event_id')
+          .eq('route_id', recordId);
+          
+        if (routeSpotsResponse.error) throw routeSpotsResponse.error;
+        if (routeEventsResponse.error) throw routeEventsResponse.error;
+        
+        return {
+          spots: routeSpotsResponse.data.map(item => item.spot_id),
+          events: routeEventsResponse.data.map(item => item.event_id)
+        };
+        
+      case 'events':
+        // Получаем связанные объекты и маршруты для события
+        const eventSpotsResponse = await supabase
+          .from('spot_event')
+          .select('spot_id')
+          .eq('event_id', recordId);
+          
+        const eventRoutesResponse = await supabase
+          .from('route_event')
+          .select('route_id')
+          .eq('event_id', recordId);
+          
+        if (eventSpotsResponse.error) throw eventSpotsResponse.error;
+        if (eventRoutesResponse.error) throw eventRoutesResponse.error;
+        
+        return {
+          spots: eventSpotsResponse.data.map(item => item.spot_id),
+          routes: eventRoutesResponse.data.map(item => item.route_id)
+        };
+        
+      default:
+        return {};
+    }
+  } catch (error) {
+    console.error(`Error fetching relations for ${tableName} record:`, error);
+    throw error;
+  }
+};
+
+// Функция для обновления связей записи
+export const updateRecordRelations = async (tableName: TableName, recordId: string, relations: any) => {
+  try {
+    // Начинаем транзакцию
+    switch (tableName) {
+      case 'spots':
+        // Обновляем связи с маршрутами
+        if (relations.routes) {
+          // Удаляем старые связи
+          await supabase
+            .from('spot_route')
+            .delete()
+            .eq('spot_id', recordId);
+            
+          // Добавляем новые связи
+          for (const routeId of relations.routes) {
+            await supabase
+              .from('spot_route')
+              .insert({ spot_id: recordId, route_id: routeId });
+          }
+        }
+        
+        // Обновляем связи с событиями
+        if (relations.events) {
+          // Удаляем старые связи
+          await supabase
+            .from('spot_event')
+            .delete()
+            .eq('spot_id', recordId);
+            
+          // Добавляем новые связи
+          for (const eventId of relations.events) {
+            await supabase
+              .from('spot_event')
+              .insert({ spot_id: recordId, event_id: eventId });
+          }
+        }
+        break;
+        
+      case 'routes':
+        // Обновляем связи с объектами
+        if (relations.spots) {
+          // Удаляем старые связи
+          await supabase
+            .from('spot_route')
+            .delete()
+            .eq('route_id', recordId);
+            
+          // Добавляем новые связи
+          for (const spotId of relations.spots) {
+            await supabase
+              .from('spot_route')
+              .insert({ spot_id: spotId, route_id: recordId });
+          }
+        }
+        
+        // Обновляем связи с событиями
+        if (relations.events) {
+          // Удаляем старые связи
+          await supabase
+            .from('route_event')
+            .delete()
+            .eq('route_id', recordId);
+            
+          // Добавляем новые связи
+          for (const eventId of relations.events) {
+            await supabase
+              .from('route_event')
+              .insert({ route_id: recordId, event_id: eventId });
+          }
+        }
+        break;
+        
+      case 'events':
+        // Обновляем связи с объектами
+        if (relations.spots) {
+          // Удаляем старые связи
+          await supabase
+            .from('spot_event')
+            .delete()
+            .eq('event_id', recordId);
+            
+          // Добавляем новые связи
+          for (const spotId of relations.spots) {
+            await supabase
+              .from('spot_event')
+              .insert({ spot_id: spotId, event_id: recordId });
+          }
+        }
+        
+        // Обновляем связи с маршрутами
+        if (relations.routes) {
+          // Удаляем старые связи
+          await supabase
+            .from('route_event')
+            .delete()
+            .eq('event_id', recordId);
+            
+          // Добавляем новые связи
+          for (const routeId of relations.routes) {
+            await supabase
+              .from('route_event')
+              .insert({ route_id: routeId, event_id: recordId });
+          }
+        }
+        break;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error(`Error updating relations for ${tableName} record:`, error);
+    throw error;
+  }
 };

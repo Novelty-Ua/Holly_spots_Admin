@@ -4,6 +4,7 @@ import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { Footer } from './Footer';
 import { EditSidebar } from './EditSidebar';
+import { TableName } from '@/services/supabaseService';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -12,7 +13,7 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [editSidebarOpen, setEditSidebarOpen] = useState(false);
-  const [activeTable, setActiveTable] = useState<string>('countries');
+  const [activeTable, setActiveTable] = useState<TableName>('countries');
   const [editingRecord, setEditingRecord] = useState<any>(null);
 
   const toggleSidebar = () => {
