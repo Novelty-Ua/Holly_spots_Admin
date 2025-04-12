@@ -47,7 +47,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         <main className="flex-1 overflow-auto p-4">
           {React.Children.map(children, child => {
             if (React.isValidElement(child)) {
-              return React.cloneElement(child, { 
+              return React.cloneElement(child as React.ReactElement<any>, { 
                 activeTable, 
                 openEditSidebar 
               });

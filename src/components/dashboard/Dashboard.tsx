@@ -2,13 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { TableControlPanel } from './TableControlPanel';
 import { DataTable } from './DataTable';
-import { 
-  getPaginatedData,
-  tableColumns,
-  deleteRecord,
-  updateRecord,
-  createRecord
-} from '@/services/mockDataService';
 import { useToast } from '@/components/ui/use-toast';
 import {
   AlertDialog,
@@ -20,6 +13,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { 
+  fetchTableData, 
+  getTableColumns, 
+  deleteRecord 
+} from '@/services/supabaseService';
 
 interface DashboardProps {
   activeTable: string;
@@ -37,6 +35,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [language, setLanguage] = useState('ru');
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [recordToDelete, setRecordToDelete] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
   
   const { toast } = useToast();
   
@@ -45,21 +44,31 @@ export const Dashboard: React.FC<DashboardProps> = ({
     loadData();
   }, [activeTable, currentPage, searchQuery, language]);
   
-  const loadData = () => {
-    const result = getPaginatedData(
-      activeTable,
-      currentPage,
-      10,
-      searchQuery,
-      language
-    );
-    
-    setData(result.data);
-    setTotalPages(result.pagination.totalPages);
-    
-    // Reset to page 1 if changing tables
-    if (currentPage > result.pagination.totalPages) {
-      setCurrentPage(1);
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      const result = await fetchTableData(
+        activeTable,
+        { page: currentPage, pageSize: 10 },
+        { search: searchQuery, language }
+      );
+      
+      setData(result.data);
+      setTotalPages(result.totalPages);
+      
+      // Reset to page 1 if changing tables
+      if (currentPage > result.totalPages) {
+        setCurrentPage(1);
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+      toast({
+        title: "Ошибка загрузки данных",
+        description: `Не удалось загрузить данные для таблицы ${activeTable}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
   
@@ -85,7 +94,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   };
   
   const handleView = (record: any) => {
-    // For now, just edit view
+    // Для просмотра используем тот же редактор, но можно потом добавить режим read-only
     openEditSidebar(record);
   };
   
@@ -94,11 +103,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
     setIsDeleteDialogOpen(true);
   };
   
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (recordToDelete) {
-      const result = deleteRecord(activeTable, recordToDelete.id);
-      
-      if (result) {
+      try {
+        await deleteRecord(activeTable, recordToDelete.id);
+        
         toast({
           title: "Запись удалена",
           description: `Запись #${recordToDelete.id} была успешно удалена.`,
@@ -106,7 +115,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         
         // Reload data
         loadData();
-      } else {
+      } catch (error) {
         toast({
           title: "Ошибка",
           description: "Не удалось удалить запись.",
@@ -125,7 +134,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   };
   
   // Get columns for current table
-  const columns = tableColumns[activeTable] || [];
+  const columns = getTableColumns(activeTable, language);
   
   return (
     <div className="space-y-4">
@@ -145,6 +154,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         currentPage={currentPage}
         totalPages={totalPages}
         onPageChange={handlePageChange}
+        isLoading={isLoading}
       />
       
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
