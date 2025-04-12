@@ -51,8 +51,8 @@ export const DataTable: React.FC<DataTableProps> = ({
       const langValue = value[column.language];
       
       // Если нужно обрезать текст
-      if (column.truncate && langValue && typeof langValue === 'string' && langValue.length > 50) {
-        return `${langValue.substring(0, 50)}...`;
+      if (column.truncate && langValue && typeof langValue === 'string') {
+        return langValue.length > 50 ? `${langValue.substring(0, 50)}...` : langValue;
       }
       
       return langValue || '-';
