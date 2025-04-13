@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { TableName } from '@/services/supabaseService';
 import { TableControlPanel } from './TableControlPanel';
 import { DataTable } from './DataTable';
 import { useToast } from '@/components/ui/use-toast';
@@ -20,7 +21,7 @@ import {
 } from '@/services/supabaseService';
 
 interface DashboardProps {
-  activeTable: string;
+  activeTable: TableName;
   openEditSidebar: (record?: any) => void;
 }
 
@@ -138,14 +139,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
   
   return (
     <div className="space-y-4">
-      <TableControlPanel 
-        table={activeTable}
+      <TableControlPanel
+        table={activeTable as TableName}
         onSearch={handleSearch}
         onLanguageChange={handleLanguageChange}
         onAddRecord={handleAddRecord}
+        columns={columns}
       />
       
-      <DataTable 
+      <DataTable
         data={data}
         columns={columns}
         onEdit={handleEdit}

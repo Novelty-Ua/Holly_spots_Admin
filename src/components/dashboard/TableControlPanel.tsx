@@ -24,8 +24,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
+interface Column {
+  key: string;
+  label: string;
+}
+
 interface TableControlPanelProps {
   table: string;
+  columns: Column[];
   onSearch: (query: string) => void;
   onLanguageChange: (lang: string) => void;
   onAddRecord: () => void;
@@ -36,6 +42,7 @@ export const TableControlPanel: React.FC<TableControlPanelProps> = ({
   onSearch,
   onLanguageChange,
   onAddRecord,
+  columns
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -114,10 +121,11 @@ export const TableControlPanel: React.FC<TableControlPanelProps> = ({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuCheckboxItem checked>ID</DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem checked>Название</DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem checked>Описание</DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem checked>Создано</DropdownMenuCheckboxItem>
+              {columns.map((column) => (
+                <DropdownMenuCheckboxItem key={column.key} checked>
+                  {column.label}
+                </DropdownMenuCheckboxItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
           
