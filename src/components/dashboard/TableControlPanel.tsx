@@ -32,9 +32,11 @@ interface Column {
 interface TableControlPanelProps {
   table: string;
   columns: Column[];
+  columnVisibility: Record<string, boolean>;
   onSearch: (query: string) => void;
   onLanguageChange: (lang: string) => void;
   onAddRecord: () => void;
+  onColumnVisibilityChange: (columnKey: string, isVisible: boolean) => void;
 }
 
 export const TableControlPanel: React.FC<TableControlPanelProps> = ({
@@ -42,7 +44,9 @@ export const TableControlPanel: React.FC<TableControlPanelProps> = ({
   onSearch,
   onLanguageChange,
   onAddRecord,
-  columns
+  columns,
+  columnVisibility,
+  onColumnVisibilityChange
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -122,7 +126,11 @@ export const TableControlPanel: React.FC<TableControlPanelProps> = ({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               {columns.map((column) => (
-                <DropdownMenuCheckboxItem key={column.key} checked>
+                <DropdownMenuCheckboxItem
+                  key={column.key}
+                  checked={columnVisibility[column.key] ?? true} // Default to true if not set
+                  onCheckedChange={(checked) => onColumnVisibilityChange(column.key, !!checked)}
+                >
                   {column.label}
                 </DropdownMenuCheckboxItem>
               ))}

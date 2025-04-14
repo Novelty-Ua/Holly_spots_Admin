@@ -37,9 +37,28 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [recordToDelete, setRecordToDelete] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
-  
+  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({});
+
   const { toast } = useToast();
   
+  // Get columns for current table
+  const columns = getTableColumns(activeTable, language);
+
+  // Initialize/update column visibility when table or language changes
+  useEffect(() => {
+    // Get columns for the current table and language inside the effect
+    const currentTableColumns = getTableColumns(activeTable, language);
+    
+    setColumnVisibility(prevVisibility => {
+      const newVisibility: Record<string, boolean> = {};
+      currentTableColumns.forEach(col => {
+        // Preserve existing visibility if the column key exists, otherwise default to true
+        newVisibility[col.key] = prevVisibility[col.key] ?? true;
+      });
+      return newVisibility;
+    });
+  }, [activeTable, language]); // Rerun only when table or language changes
+
   // Load data based on current settings
   useEffect(() => {
     loadData();
@@ -133,9 +152,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
     setIsDeleteDialogOpen(false);
     setRecordToDelete(null);
   };
-  
-  // Get columns for current table
-  const columns = getTableColumns(activeTable, language);
+
+  const handleColumnVisibilityChange = (columnKey: string, isVisible: boolean) => {
+    setColumnVisibility(prev => ({
+      ...prev,
+      [columnKey]: isVisible,
+    }));
+  };
+
+  // Filter columns based on visibility state
+  const visibleColumns = columns.filter(col => columnVisibility[col.key]);
   
   return (
     <div className="space-y-4">
@@ -144,12 +170,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
         onSearch={handleSearch}
         onLanguageChange={handleLanguageChange}
         onAddRecord={handleAddRecord}
-        columns={columns}
+        columns={columns} // Pass all columns for the dropdown
+        columnVisibility={columnVisibility}
+        onColumnVisibilityChange={handleColumnVisibilityChange}
       />
       
       <DataTable
         data={data}
-        columns={columns}
+        columns={visibleColumns} // Pass only visible columns to the table
         onEdit={handleEdit}
         onDelete={handleDeleteClick}
         onView={handleView}
