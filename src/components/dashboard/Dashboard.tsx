@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { TableName } from '@/services/supabaseService';
 import { TableControlPanel } from './TableControlPanel';
 import { DataTable } from './DataTable';
@@ -14,10 +14,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { 
-  fetchTableData, 
-  getTableColumns, 
-  deleteRecord 
+import {
+  fetchTableData,
+  getTableColumns,
+  deleteRecord
 } from '@/services/supabaseService';
 
 interface DashboardProps {
@@ -34,6 +34,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [totalPages, setTotalPages] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [language, setLanguage] = useState('ru');
+  const [activeFilters, setActiveFilters] = useState<Record<string, string>>({}); // Added state for filters
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [recordToDelete, setRecordToDelete] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -41,42 +42,38 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const { toast } = useToast();
   
-  // Get columns for current table
-  const columns = getTableColumns(activeTable, language);
+  // Get columns for current table (memoized)
+  const columns = React.useMemo(() => 
+    getTableColumns(activeTable, language), 
+    [activeTable, language]
+  );
 
   // Initialize/update column visibility when table or language changes
   useEffect(() => {
-    // Get columns for the current table and language inside the effect
     const currentTableColumns = getTableColumns(activeTable, language);
-    
     setColumnVisibility(prevVisibility => {
       const newVisibility: Record<string, boolean> = {};
       currentTableColumns.forEach(col => {
-        // Preserve existing visibility if the column key exists, otherwise default to true
         newVisibility[col.key] = prevVisibility[col.key] ?? true;
       });
       return newVisibility;
     });
-  }, [activeTable, language]); // Rerun only when table or language changes
+  }, [activeTable, language]);
 
-  // Load data based on current settings
-  useEffect(() => {
-    loadData();
-  }, [activeTable, currentPage, searchQuery, language]);
-  
-  const loadData = async () => {
+  // Load data function (memoized with useCallback)
+  const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
       const result = await fetchTableData(
         activeTable,
         { page: currentPage, pageSize: 10 },
-        { search: searchQuery, language }
+        { search: searchQuery, language, filters: activeFilters } // Pass filters here
       );
       
       setData(result.data);
       setTotalPages(result.totalPages);
       
-      // Reset to page 1 if changing tables
+      // Check if current page is still valid after filtering/searching
       if (currentPage > result.totalPages) {
         setCurrentPage(1);
       }
@@ -90,7 +87,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [activeTable, currentPage, searchQuery, language, activeFilters, toast]); // Add activeFilters dependency
+
+  // Load data when dependencies change
+  useEffect(() => {
+    loadData();
+  }, [loadData]); // Use loadData directly as dependency
   
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -99,6 +101,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
   
   const handleLanguageChange = (lang: string) => {
     setLanguage(lang);
+    // Data will reload via useEffect dependency change
+  };
+
+  // Handler for filter changes from TableControlPanel
+  const handleFilterChange = (newFilters: Record<string, string>) => {
+    setActiveFilters(newFilters);
+    setCurrentPage(1); // Reset to first page when filters change
   };
   
   const handlePageChange = (page: number) => {
@@ -114,7 +123,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   };
   
   const handleView = (record: any) => {
-    // Для просмотра используем тот же редактор, но можно потом добавить режим read-only
     openEditSidebar(record);
   };
   
@@ -127,14 +135,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
     if (recordToDelete) {
       try {
         await deleteRecord(activeTable, recordToDelete.id);
-        
         toast({
           title: "Запись удалена",
           description: `Запись #${recordToDelete.id} была успешно удалена.`,
         });
-        
-        // Reload data
-        loadData();
+        loadData(); // Reload data after delete
       } catch (error) {
         toast({
           title: "Ошибка",
@@ -143,7 +148,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
         });
       }
     }
-    
     setIsDeleteDialogOpen(false);
     setRecordToDelete(null);
   };
@@ -160,8 +164,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
     }));
   };
 
-  // Filter columns based on visibility state
-  const visibleColumns = columns.filter(col => columnVisibility[col.key]);
+  // Filter columns based on visibility state (memoized)
+  const visibleColumns = React.useMemo(() => 
+    columns.filter(col => columnVisibility[col.key]),
+    [columns, columnVisibility]
+  );
   
   return (
     <div className="space-y-4">
@@ -170,14 +177,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
         onSearch={handleSearch}
         onLanguageChange={handleLanguageChange}
         onAddRecord={handleAddRecord}
-        columns={columns} // Pass all columns for the dropdown
+        columns={columns} 
         columnVisibility={columnVisibility}
         onColumnVisibilityChange={handleColumnVisibilityChange}
+        onFilterChange={handleFilterChange} // Pass the new handler
       />
       
       <DataTable
         data={data}
-        columns={visibleColumns} // Pass only visible columns to the table
+        columns={visibleColumns}
         onEdit={handleEdit}
         onDelete={handleDeleteClick}
         onView={handleView}
