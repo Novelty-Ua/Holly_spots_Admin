@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { TableName } from '@/services/supabaseService';
 import { TableControlPanel } from './TableControlPanel';
 import { DataTable } from './DataTable';
@@ -14,10 +14,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { 
-  fetchTableData, 
-  getTableColumns, 
-  deleteRecord 
+import {
+  fetchTableData,
+  getTableColumns,
+  deleteRecord
 } from '@/services/supabaseService';
 
 interface DashboardProps {
@@ -25,7 +25,12 @@ interface DashboardProps {
   openEditSidebar: (record?: any) => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ 
+interface SortConfig {
+  key: string;
+  direction: 'ascending' | 'descending';
+}
+
+export const Dashboard: React.FC<DashboardProps> = ({
   activeTable,
   openEditSidebar
 }) => {
@@ -34,52 +39,65 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [totalPages, setTotalPages] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [language, setLanguage] = useState('ru');
+  const [activeFilters, setActiveFilters] = useState<Record<string, string>>({}); // Added state for filters
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [recordToDelete, setRecordToDelete] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({});
+  // Combine sortKey and sortAscending into a single sortConfig state
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
 
   const { toast } = useToast();
   
-  // Get columns for current table
-  const columns = getTableColumns(activeTable, language);
+  // Get columns for current table (memoized)
+  const columns = React.useMemo(() => 
+    getTableColumns(activeTable, language), 
+    [activeTable, language]
+  );
 
   // Initialize/update column visibility when table or language changes
   useEffect(() => {
-    // Get columns for the current table and language inside the effect
     const currentTableColumns = getTableColumns(activeTable, language);
-    
     setColumnVisibility(prevVisibility => {
       const newVisibility: Record<string, boolean> = {};
       currentTableColumns.forEach(col => {
-        // Preserve existing visibility if the column key exists, otherwise default to true
+        // Default to true if not set or if the column is newly introduced
         newVisibility[col.key] = prevVisibility[col.key] ?? true;
       });
       return newVisibility;
     });
-  }, [activeTable, language]); // Rerun only when table or language changes
+    // Reset filters when table changes
+    setActiveFilters({}); 
+  }, [activeTable, language]);
 
-  // Load data based on current settings
-  useEffect(() => {
-    loadData();
-  }, [activeTable, currentPage, searchQuery, language]);
-  
-  const loadData = async () => {
+  // Load data function (memoized with useCallback)
+  const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const result = await fetchTableData(
-        activeTable,
-        { page: currentPage, pageSize: 10 },
-        { search: searchQuery, language }
-      );
+      const result = await fetchTableData(activeTable, {
+        page: currentPage,
+        pageSize: 10,
+      }, {
+          search: searchQuery,
+          language,
+          filters: activeFilters,
+          // Pass sort key and direction from sortConfig
+          sortKey: sortConfig?.key,
+          sortAscending: sortConfig?.direction === 'ascending'
+      });
       
       setData(result.data);
       setTotalPages(result.totalPages);
       
-      // Reset to page 1 if changing tables
-      if (currentPage > result.totalPages) {
+      // Check if current page is still valid after filtering/searching
+      // If the current page becomes invalid (e.g., > totalPages), reset to 1
+      if (currentPage > result.totalPages && result.totalPages > 0) {
+        setCurrentPage(1);
+      } else if (result.totalPages === 0 && currentPage !== 1) {
+        // Handle case where no results are found and we are not on page 1
         setCurrentPage(1);
       }
+
     } catch (error) {
       console.error('Error loading data:', error);
       toast({
@@ -87,10 +105,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
         description: `Не удалось загрузить данные для таблицы ${activeTable}`,
         variant: "destructive",
       });
+      setData([]); // Clear data on error
+      setTotalPages(1);
+      setCurrentPage(1);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [activeTable, currentPage, searchQuery, language, activeFilters, sortConfig, toast]); // Update dependencies
+
+  // Load data when dependencies change
+  useEffect(() => {
+    loadData();
+  }, [loadData]); // Use loadData directly as dependency
   
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -99,6 +125,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
   
   const handleLanguageChange = (lang: string) => {
     setLanguage(lang);
+    setCurrentPage(1); // Reset page on language change
+    setActiveFilters({}); // Reset filters on language change for simplicity
+  };
+
+  // Handler for filter changes from TableControlPanel
+  const handleFilterChange = (newFilters: Record<string, string>) => {
+    setActiveFilters(newFilters);
+    setCurrentPage(1); // Reset to first page when filters change
+  };
+  
+  // Renamed to handleSort and updates sortConfig state
+  const handleSort = (key: string) => {
+    let direction: 'ascending' | 'descending' = 'ascending';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+    setCurrentPage(1); // Reset page on sorting change
   };
   
   const handlePageChange = (page: number) => {
@@ -114,7 +158,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   };
   
   const handleView = (record: any) => {
-    // Для просмотра используем тот же редактор, но можно потом добавить режим read-only
     openEditSidebar(record);
   };
   
@@ -126,26 +169,35 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const confirmDelete = async () => {
     if (recordToDelete) {
       try {
+        setIsLoading(true); // Optionally set loading state during delete
         await deleteRecord(activeTable, recordToDelete.id);
-        
         toast({
           title: "Запись удалена",
           description: `Запись #${recordToDelete.id} была успешно удалена.`,
         });
-        
-        // Reload data
-        loadData();
+        // Adjust currentPage if the last item on a page was deleted
+        if (data.length === 1 && currentPage > 1) {
+          setCurrentPage(currentPage - 1);
+        } else {
+          loadData(); // Reload data on the potentially same page
+        }
       } catch (error) {
+        console.error("Delete error:", error);
         toast({
           title: "Ошибка",
           description: "Не удалось удалить запись.",
           variant: "destructive",
         });
+      } finally {
+         setIsLoading(false);
+         setIsDeleteDialogOpen(false);
+         setRecordToDelete(null);
       }
+    } else {
+       // Close dialog if recordToDelete is somehow null
+        setIsDeleteDialogOpen(false);
+        setRecordToDelete(null);
     }
-    
-    setIsDeleteDialogOpen(false);
-    setRecordToDelete(null);
   };
   
   const cancelDelete = () => {
@@ -160,8 +212,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
     }));
   };
 
-  // Filter columns based on visibility state
-  const visibleColumns = columns.filter(col => columnVisibility[col.key]);
+  // Filter columns based on visibility state (memoized)
+  const visibleColumns = React.useMemo(() => 
+    columns.filter(col => columnVisibility[col.key] !== false), // Show if true or undefined
+    [columns, columnVisibility]
+  );
   
   return (
     <div className="space-y-4">
@@ -170,14 +225,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
         onSearch={handleSearch}
         onLanguageChange={handleLanguageChange}
         onAddRecord={handleAddRecord}
-        columns={columns} // Pass all columns for the dropdown
+        columns={columns} 
         columnVisibility={columnVisibility}
         onColumnVisibilityChange={handleColumnVisibilityChange}
+        onFilterChange={handleFilterChange} // Pass the new handler
+        // Remove sorting props from TableControlPanel
       />
       
       <DataTable
         data={data}
-        columns={visibleColumns} // Pass only visible columns to the table
+        columns={visibleColumns} // Use visible columns
         onEdit={handleEdit}
         onDelete={handleDeleteClick}
         onView={handleView}
@@ -185,6 +242,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
         totalPages={totalPages}
         onPageChange={handlePageChange}
         isLoading={isLoading}
+        sortConfig={sortConfig} // Pass sortConfig state
+        onSort={handleSort} // Pass handleSort function
       />
       
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

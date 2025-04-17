@@ -1,17 +1,23 @@
 
-import React from 'react';
-import { 
-  Table, 
-  TableBody, 
+import React, { useState } from 'react';
+import {
+  Table,
+  TableBody,
   TableCell, 
   TableHead, 
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Edit, Eye, Trash2 } from "lucide-react";
+import { Edit, Eye, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Pagination } from './Pagination';
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils"; // Добавим утилиту для классов
+
+interface SortConfig {
+  key: string;
+  direction: 'ascending' | 'descending';
+}
 
 interface DataTableProps {
   data: any[];
@@ -23,6 +29,8 @@ interface DataTableProps {
   totalPages: number;
   onPageChange: (page: number) => void;
   isLoading: boolean;
+  sortConfig: SortConfig | null;
+  onSort: (key: string) => void;
 }
 
 export const DataTable: React.FC<DataTableProps> = ({
@@ -34,8 +42,21 @@ export const DataTable: React.FC<DataTableProps> = ({
   currentPage,
   totalPages,
   onPageChange,
-  isLoading
+  isLoading,
+  sortConfig,
+  onSort
 }) => {
+
+  const renderSortIcon = (columnKey: string) => {
+    if (!sortConfig || sortConfig.key !== columnKey) {
+      return <ArrowUpDown className="ml-2 h-4 w-4 text-muted-foreground/70" />;
+    }
+    if (sortConfig.direction === 'ascending') {
+      return <ArrowUp className="ml-2 h-4 w-4" />;
+    }
+    return <ArrowDown className="ml-2 h-4 w-4" />;
+  };
+
   // Функция для форматирования ячейки данных
   const formatCellData = (record: any, column: any) => {
     const value = record[column.key];
@@ -90,9 +111,18 @@ export const DataTable: React.FC<DataTableProps> = ({
             <TableHeader>
               <TableRow>
                 {columns.map((column) => (
-                  <TableHead key={column.key}>{column.label}</TableHead>
+                  <TableHead key={column.key}>
+                    <Button
+                      variant="ghost"
+                      onClick={() => onSort(column.key)}
+                      className="px-0 hover:bg-transparent"
+                    >
+                      {column.label}
+                      {renderSortIcon(column.key)}
+                    </Button>
+                  </TableHead>
                 ))}
-                <TableHead>Действия</TableHead>
+                <TableHead className="w-[120px]">Действия</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -122,9 +152,18 @@ export const DataTable: React.FC<DataTableProps> = ({
           <TableHeader>
             <TableRow>
               {columns.map((column) => (
-                <TableHead key={column.key}>{column.label}</TableHead>
+                <TableHead key={column.key}>
+                   <Button
+                      variant="ghost"
+                      onClick={() => onSort(column.key)}
+                      className="px-0 hover:bg-transparent"
+                    >
+                      {column.label}
+                      {renderSortIcon(column.key)}
+                    </Button>
+                </TableHead>
               ))}
-              <TableHead>Действия</TableHead>
+              <TableHead className="w-[120px]">Действия</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
