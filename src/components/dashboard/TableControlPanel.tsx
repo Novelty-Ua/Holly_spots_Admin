@@ -22,6 +22,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from "@/lib/utils"; // Import cn utility
 
 interface Column {
   key: string;
@@ -80,6 +81,9 @@ export const TableControlPanel: React.FC<TableControlPanelProps> = ({
     onFilterChange(newFilters);
   };
 
+  // Check if any filter value is active (not null, undefined, or empty string)
+  const isAnyFilterActive = Object.values(filters).some(value => value);
+
   // Remove sortableColumns calculation as it's no longer needed here
 
   return (
@@ -115,7 +119,11 @@ export const TableControlPanel: React.FC<TableControlPanelProps> = ({
           {/* Filter Popover */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="icon" className="h-9 w-9">
+              <Button
+                variant={isAnyFilterActive ? "destructive" : "outline"}
+                size="icon"
+                className="h-9 w-9"
+              >
                 <Filter className="h-4 w-4" />
                 <span className="sr-only">Фильтр</span>
               </Button>
