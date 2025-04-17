@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { PostgrestFilterBuilder } from '@supabase/postgrest-js'; // Import the type
 
 export interface PaginationOptions {
   page: number;
@@ -104,7 +105,10 @@ export const fetchTableData = async (
     
     const tableColumns = getTableColumns(tableName, language); // Get column definitions early
 
-    let query = supabase
+    // Explicitly type the query variable
+    let query: PostgrestFilterBuilder<any, any, Record<string, any>[], unknown>;
+    
+    query = supabase
       .from(tableName)
       .select('*', { count: 'exact' })
       .range(from, to);
@@ -160,17 +164,12 @@ export const fetchTableData = async (
       const columnInfo = tableColumns.find(col => col.key === sortKey);
       if (columnInfo && columnInfo.sortable) { // Check if column is sortable
          if (columnInfo.isJsonb && columnInfo.language && sortKey) {
-            // Correct syntax for ordering by JSONB field based on Supabase documentation
-            query = query.order(columnKey, { referencedTable: tableName, foreignKey: null, ascending: sortAscending, nullsFirst: false });
-             // Need to refine this - ordering by JSONB requires specific handling, often not direct.
-             // The `.order` might need the JSON path.
-             // Example: query = query.order(`${sortKey}->>${language}`, { ascending: sortAscending }); // This syntax might vary
-             // Let's try the standard order first, might work if DB casts it
-             console.warn(`Attempting to sort by JSONB column '${sortKey}'. This might require specific syntax.`);
-             query = query.order(`${sortKey}->>${language}`, { ascending: sortAscending , foreignTable:tableName}); // Try explicit path
-         } else {
+            // Correct syntax for ordering by a specific key within a JSONB column
+            // Use the '->>' operator to extract the text value for the given language
+            query = query.order(`${sortKey}->>${language}`, { ascending: sortAscending, nullsFirst: true }); // nullsFirst: true (or false) is often useful
+         } else if (sortKey) { // Ensure sortKey is not null/undefined for standard sort
              // Standard sort for non-JSONB fields
-             query = query.order(sortKey, { ascending: sortAscending });
+             query = query.order(sortKey, { ascending: sortAscending, nullsFirst: true });
          }
       } else if (columnInfo && !columnInfo.sortable) {
           console.warn(`Column '${sortKey}' is marked as not sortable. Ignoring sort.`);

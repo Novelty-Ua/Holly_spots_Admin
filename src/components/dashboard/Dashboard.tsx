@@ -25,7 +25,12 @@ interface DashboardProps {
   openEditSidebar: (record?: any) => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ 
+interface SortConfig {
+  key: string;
+  direction: 'ascending' | 'descending';
+}
+
+export const Dashboard: React.FC<DashboardProps> = ({
   activeTable,
   openEditSidebar
 }) => {
@@ -39,8 +44,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [recordToDelete, setRecordToDelete] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({});
-  const [sortKey, setSortKey] = useState<string | null>(null);
-  const [sortAscending, setSortAscending] = useState<boolean>(true);
+  // Combine sortKey and sortAscending into a single sortConfig state
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
 
   const { toast } = useToast();
   
@@ -72,8 +77,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
       const result = await fetchTableData(activeTable, {
         page: currentPage,
         pageSize: 10,
-      }, { search: searchQuery, language, filters: activeFilters, sortKey, sortAscending });
-
+      }, {
+          search: searchQuery,
+          language,
+          filters: activeFilters,
+          // Pass sort key and direction from sortConfig
+          sortKey: sortConfig?.key,
+          sortAscending: sortConfig?.direction === 'ascending'
+      });
       
       setData(result.data);
       setTotalPages(result.totalPages);
@@ -100,7 +111,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [activeTable, currentPage, searchQuery, language, activeFilters, sortKey, sortAscending, toast]);
+  }, [activeTable, currentPage, searchQuery, language, activeFilters, sortConfig, toast]); // Update dependencies
 
   // Load data when dependencies change
   useEffect(() => {
@@ -124,13 +135,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
     setCurrentPage(1); // Reset to first page when filters change
   };
   
-  const handleSortChange = (newSortKey: string) => {
-    if (sortKey === newSortKey) {
-      setSortAscending(!sortAscending); // Toggle direction if sorting by the same key
-    } else {
-      setSortKey(newSortKey);
-      setSortAscending(true); // Default to ascending for new keys
+  // Renamed to handleSort and updates sortConfig state
+  const handleSort = (key: string) => {
+    let direction: 'ascending' | 'descending' = 'ascending';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
     }
+    setSortConfig({ key, direction });
     setCurrentPage(1); // Reset page on sorting change
   };
   
@@ -218,9 +229,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         columnVisibility={columnVisibility}
         onColumnVisibilityChange={handleColumnVisibilityChange}
         onFilterChange={handleFilterChange} // Pass the new handler
-        onSortChange={handleSortChange} // Pass the new handler
-        sortKey={sortKey} // Pass the current sort key
-        sortAscending={sortAscending} // Pass the current sort direction
+        // Remove sorting props from TableControlPanel
       />
       
       <DataTable
@@ -233,6 +242,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
         totalPages={totalPages}
         onPageChange={handlePageChange}
         isLoading={isLoading}
+        sortConfig={sortConfig} // Pass sortConfig state
+        onSort={handleSort} // Pass handleSort function
       />
       
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

@@ -41,9 +41,7 @@ interface TableControlPanelProps {
   onAddRecord: () => void;
   onColumnVisibilityChange: (columnKey: string, isVisible: boolean) => void;
   onFilterChange: (filters: Record<string, string>) => void;
-  onSortChange: (key: string | null, ascending: boolean) => void; 
-  sortKey: string | null;
-  sortAscending: boolean;
+  // Remove sorting related props
 }
 
 export const TableControlPanel: React.FC<TableControlPanelProps> = ({
@@ -53,11 +51,9 @@ export const TableControlPanel: React.FC<TableControlPanelProps> = ({
   onAddRecord,
   columns,
   columnVisibility,
-  onColumnVisibilityChange,  
-  onFilterChange,
-  onSortChange,
-  sortKey,
-  sortAscending
+  onColumnVisibilityChange,
+  onFilterChange
+  // Remove sorting related props from destructuring
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<Record<string, string>>({}); 
@@ -84,15 +80,7 @@ export const TableControlPanel: React.FC<TableControlPanelProps> = ({
     onFilterChange(newFilters);
   };
 
-  const sortableColumns = columns.filter(col =>
-      col.sortable !== false && 
-      !col.isJsonb &&           
-      !col.isGeometry &&        
-      !col.isArray &&           
-      col.key !== 'id' &&       
-      col.key !== 'created_at' && 
-      col.key !== 'updated_at'
-  );
+  // Remove sortableColumns calculation as it's no longer needed here
 
   return (
     <div className="bg-card rounded-lg border border-border/40 p-4 mb-4">
@@ -157,76 +145,7 @@ export const TableControlPanel: React.FC<TableControlPanelProps> = ({
             </PopoverContent>
           </Popover>
 
-          {/* Sorting Popover - RadioGroup temporarily commented out */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="icon" className="h-9 w-9">
-                <SlidersHorizontal className="h-4 w-4" />
-                <span className="sr-only">Сортировка</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-80">
-              <div className="space-y-4">
-                <h4 className="font-medium">Сортировка</h4>
-
-                {/* Column Selection */} 
-                <div className="grid grid-cols-3 items-center gap-2">
-                   <Label htmlFor="sort-column" className="col-span-1 text-sm">
-                      Колонка
-                   </Label>
-                   <Select
-                      value={sortKey ?? ""} 
-                      onValueChange={(newKey) => {
-                           onSortChange(newKey === "" ? null : newKey, sortAscending);
-                      }}
-                   >
-                     <SelectTrigger id="sort-column" className="col-span-2 h-8">
-                       <SelectValue placeholder="Выберите колонку" />
-                     </SelectTrigger>
-                     <SelectContent>
-                        <SelectItem value="">Без сортировки</SelectItem>
-                        {sortableColumns.map((column) => (
-                          <SelectItem key={column.key} value={column.key}>
-                            {column.label}
-                          </SelectItem>
-                         ))}
-                     </SelectContent>
-                   </Select>
-                </div>
-
-                {/* --- Direction Selection Temporarily Commented Out --- */}
-                {/* 
-                {sortKey && ( 
-                  <div className="grid grid-cols-3 items-center gap-2">
-                    <Label className="col-span-1 text-sm">
-                        Направление
-                    </Label>
-                    <RadioGroup
-                      value={sortAscending ? "true" : "false"}
-                      onValueChange={(value) => {
-                         if (sortKey) {
-                           onSortChange(sortKey, value === "true"); 
-                         }
-                      }}
-                      className="col-span-2 flex space-x-2"
-                    >
-                       <div className="flex items-center space-x-1">
-                         <RadioGroupItem value="true" id="sort-asc" />
-                         <Label htmlFor="sort-asc" className="text-sm font-normal cursor-pointer">По возр.</Label>
-                       </div>
-                       <div className="flex items-center space-x-1">
-                         <RadioGroupItem value="false" id="sort-desc" />
-                         <Label htmlFor="sort-desc" className="text-sm font-normal cursor-pointer">По убыв.</Label>
-                       </div>
-                    </RadioGroup>
-                  </div>
-                )}
-                */}
-                {/* --- End Commented Out Section --- */}
-                
-              </div>
-            </PopoverContent>
-          </Popover>
+          {/* Remove Sorting Popover */}
 
           {/* Column Visibility Dropdown */}
           <DropdownMenu>
