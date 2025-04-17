@@ -10,7 +10,8 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; 
+import { Checkbox } from "@/components/ui/checkbox"; // Import Checkbox
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Filter,
   Search,
@@ -133,18 +134,29 @@ export const TableControlPanel: React.FC<TableControlPanelProps> = ({
                 <h4 className="font-medium">Фильтры</h4>
                 <div className="space-y-4 max-h-60 overflow-y-auto">
                   {columns.map((column) => (
+                    // Exclude non-filterable/non-toggleable columns like id, created_at, updated_at
                     (column.key !== 'id' && column.key !== 'created_at' && column.key !== 'updated_at') ? (
-                      <div key={column.key} className="grid grid-cols-3 items-center gap-2">
-                         <Label htmlFor={`filter-${column.key}`} className="col-span-1 text-sm truncate">
-                          {column.label}
-                        </Label>
-                        <Input
-                          id={`filter-${column.key}`}
-                          placeholder={`Фильтр по ${column.label}...`}
-                          value={filters[column.key] || ''}
-                          onChange={(e) => handleFilterInputChange(column.key, e.target.value)}
-                          className="col-span-2 h-8 bg-muted/20"
+                      <div key={column.key} className="flex items-center gap-3">
+                        {/* Checkbox for visibility */}
+                        <Checkbox
+                          id={`visibility-${column.key}`}
+                          checked={columnVisibility[column.key] ?? true} // Default to visible
+                          onCheckedChange={(checked) => onColumnVisibilityChange(column.key, !!checked)}
+                          aria-label={`Показать/скрыть колонку ${column.label}`}
                         />
+                        {/* Label and Input */}
+                        <div className="flex-1 grid grid-cols-3 items-center gap-2">
+                           <Label htmlFor={`filter-${column.key}`} className="col-span-1 text-sm truncate cursor-pointer">
+                            {column.label}
+                          </Label>
+                          <Input
+                            id={`filter-${column.key}`}
+                            placeholder={`Фильтр...`}
+                            value={filters[column.key] || ''}
+                            onChange={(e) => handleFilterInputChange(column.key, e.target.value)}
+                            className="col-span-2 h-8 bg-muted/20"
+                          />
+                        </div>
                       </div>
                     ) : null
                   ))}
@@ -155,26 +167,7 @@ export const TableControlPanel: React.FC<TableControlPanelProps> = ({
 
           {/* Remove Sorting Popover */}
 
-          {/* Column Visibility Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" className="h-9 w-9">
-                <Columns className="h-4 w-4" />
-                <span className="sr-only">Колонки</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              {columns.map((column) => (
-                <DropdownMenuCheckboxItem
-                  key={column.key}
-                  checked={columnVisibility[column.key] ?? true}
-                  onCheckedChange={(checked) => onColumnVisibilityChange(column.key, !!checked)}
-                >
-                  {column.label}
-                </DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* Remove the separate Column Visibility Dropdown */}
 
           {/* Add Button */}
           <Button onClick={onAddRecord} className="gap-1">
