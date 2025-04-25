@@ -39,7 +39,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [totalPages, setTotalPages] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [language, setLanguage] = useState('ru');
-  const [activeFilters, setActiveFilters] = useState<Record<string, string>>({}); // Added state for filters
+  // Store filters per table
+  const [allActiveFilters, setAllActiveFilters] = useState<Record<TableName, Record<string, string>>>({} as Record<TableName, Record<string, string>>);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [recordToDelete, setRecordToDelete] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -61,13 +62,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
     setColumnVisibility(prevVisibility => {
       const newVisibility: Record<string, boolean> = {};
       currentTableColumns.forEach(col => {
-        // Default to true if not set or if the column is newly introduced
-        newVisibility[col.key] = prevVisibility[col.key] ?? true;
+        // Default 'id' to false (hidden), others to true if not set
+        const defaultVisibility = col.key === 'id' ? false : true;
+        newVisibility[col.key] = prevVisibility[col.key] ?? defaultVisibility;
       });
       return newVisibility;
     });
-    // Reset filters when table changes
-    setActiveFilters({}); 
+    // No longer reset filters here to keep them persistent per table
   }, [activeTable, language]);
 
   // Load data function (memoized with useCallback)
@@ -80,7 +81,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       }, {
           search: searchQuery,
           language,
-          filters: activeFilters,
+          filters: allActiveFilters[activeTable] || {}, // Use filters for the current table
           // Pass sort key and direction from sortConfig
           sortKey: sortConfig?.key,
           sortAscending: sortConfig?.direction === 'ascending'
@@ -111,7 +112,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [activeTable, currentPage, searchQuery, language, activeFilters, sortConfig, toast]); // Update dependencies
+  }, [activeTable, currentPage, searchQuery, language, allActiveFilters, sortConfig, toast]); // Update dependencies
 
   // Load data when dependencies change
   useEffect(() => {
@@ -126,12 +127,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const handleLanguageChange = (lang: string) => {
     setLanguage(lang);
     setCurrentPage(1); // Reset page on language change
-    setActiveFilters({}); // Reset filters on language change for simplicity
+    // Optionally reset filters for all tables on language change, or just the current one
+    // setAllActiveFilters({}); // Reset all filters
+    // Or reset only current table's filters:
+    // setAllActiveFilters(prev => ({ ...prev, [activeTable]: {} }));
   };
 
   // Handler for filter changes from TableControlPanel
   const handleFilterChange = (newFilters: Record<string, string>) => {
-    setActiveFilters(newFilters);
+    // Update filters for the specific active table
+    setAllActiveFilters(prev => ({ ...prev, [activeTable]: newFilters }));
     setCurrentPage(1); // Reset to first page when filters change
   };
   
@@ -229,6 +234,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         columnVisibility={columnVisibility}
         onColumnVisibilityChange={handleColumnVisibilityChange}
         onFilterChange={handleFilterChange} // Pass the new handler
+        activeFilters={allActiveFilters[activeTable] || {}} // Pass filters for the current table
         // Remove sorting props from TableControlPanel
       />
       

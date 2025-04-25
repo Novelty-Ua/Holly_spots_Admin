@@ -34,7 +34,7 @@ interface Column {
   isArray?: boolean;
 }
 
-interface TableControlPanelProps {  
+interface TableControlPanelProps {
   table: string;
   columns: Column[];
   columnVisibility: Record<string, boolean>;
@@ -43,6 +43,7 @@ interface TableControlPanelProps {
   onAddRecord: () => void;
   onColumnVisibilityChange: (columnKey: string, isVisible: boolean) => void;
   onFilterChange: (filters: Record<string, string>) => void;
+  activeFilters: Record<string, string>; // Add activeFilters prop
   // Remove sorting related props
 }
 
@@ -54,19 +55,12 @@ export const TableControlPanel: React.FC<TableControlPanelProps> = ({
   columns,
   columnVisibility,
   onColumnVisibilityChange,
-  onFilterChange
+  onFilterChange,
+  activeFilters // Destructure activeFilters
   // Remove sorting related props from destructuring
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState<Record<string, string>>({}); 
-
-  useEffect(() => {
-    setFilters(prevFilters => {
-      const validKeys = new Set(columns.map(c => c.key));
-      return Object.fromEntries(Object.entries(prevFilters).filter(([k]) => validKeys.has(k)));
-    });
-  }, [columns]);
-
+  // Remove internal filters state and useEffect
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,16 +68,16 @@ export const TableControlPanel: React.FC<TableControlPanelProps> = ({
   };
 
   const handleFilterInputChange = (columnKey: string, value: string) => {
+    // Create the new filters state based on the current activeFilters and the change
     const newFilters = {
-      ...filters,
+      ...activeFilters, // Use the passed-in activeFilters
       [columnKey]: value,
     };
-    setFilters(newFilters);
-    onFilterChange(newFilters);
+    onFilterChange(newFilters); // Call the callback with the complete new state
   };
 
-  // Check if any filter value is active (not null, undefined, or empty string)
-  const isAnyFilterActive = Object.values(filters).some(value => value);
+  // Check if any filter value is active using the passed-in activeFilters
+  const isAnyFilterActive = Object.values(activeFilters).some(value => value);
 
   // Remove sortableColumns calculation as it's no longer needed here
 
@@ -134,8 +128,8 @@ export const TableControlPanel: React.FC<TableControlPanelProps> = ({
                 <h4 className="font-medium">Фильтры</h4>
                 <div className="space-y-4 max-h-60 overflow-y-auto">
                   {columns.map((column) => (
-                    // Exclude non-filterable/non-toggleable columns like id, created_at, updated_at
-                    (column.key !== 'id' && column.key !== 'created_at' && column.key !== 'updated_at') ? (
+                    // Exclude only created_at and updated_at from having filter inputs/toggles
+                    (column.key !== 'created_at' && column.key !== 'updated_at') ? (
                       <div key={column.key} className="flex items-center gap-3">
                         {/* Checkbox for visibility */}
                         <Checkbox
@@ -152,7 +146,7 @@ export const TableControlPanel: React.FC<TableControlPanelProps> = ({
                           <Input
                             id={`filter-${column.key}`}
                             placeholder={`Фильтр...`}
-                            value={filters[column.key] || ''}
+                            value={activeFilters[column.key] || ''} // Use activeFilters prop for value
                             onChange={(e) => handleFilterInputChange(column.key, e.target.value)}
                             className="col-span-2 h-8 bg-muted/20"
                           />

@@ -185,13 +185,6 @@ export const DataTable: React.FC<DataTableProps> = ({
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => onView(record)}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
                       onClick={() => onEdit(record)}
                     >
                       <Edit className="h-4 w-4" />
