@@ -20,6 +20,28 @@ import {
   deleteRecord
 } from '@/services/supabaseService';
 
+// --- LocalStorage Helpers ---
+const LOCALSTORAGE_PREFIX = 'dashboard_';
+
+function getFromLocalStorage<T>(key: string, defaultValue: T): T {
+  try {
+    const item = localStorage.getItem(LOCALSTORAGE_PREFIX + key);
+    return item ? JSON.parse(item) : defaultValue;
+  } catch (error) {
+    console.error(`Error reading localStorage key “${key}”:`, error);
+    return defaultValue;
+  }
+}
+
+function saveToLocalStorage<T>(key: string, value: T): void {
+  try {
+    localStorage.setItem(LOCALSTORAGE_PREFIX + key, JSON.stringify(value));
+  } catch (error) {
+    console.error(`Error setting localStorage key “${key}”:`, error);
+  }
+}
+// --- End LocalStorage Helpers ---
+
 interface DashboardProps {
   activeTable: TableName;
   openEditSidebar: (record?: any) => void;
@@ -37,16 +59,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [data, setData] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [language, setLanguage] = useState('ru');
+  const [searchQuery, setSearchQuery] = useState(''); // Search query is typically not persisted
+  // Load initial state from localStorage or use defaults
+  const [language, setLanguage] = useState<string>(() => getFromLocalStorage('language', 'ru'));
   // Store filters per table
-  const [allActiveFilters, setAllActiveFilters] = useState<Record<TableName, Record<string, string>>>({} as Record<TableName, Record<string, string>>);
+  const [allActiveFilters, setAllActiveFilters] = useState<Record<TableName, Record<string, string>>>(() =>
+    getFromLocalStorage('allActiveFilters', {} as Record<TableName, Record<string, string>>)
+  );
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [recordToDelete, setRecordToDelete] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({});
+  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() =>
+    getFromLocalStorage('columnVisibility', {})
+  );
   // Combine sortKey and sortAscending into a single sortConfig state
-  const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>(() =>
+    getFromLocalStorage('sortConfig', null)
+  );
 
   const { toast } = useToast();
   
@@ -56,20 +85,27 @@ export const Dashboard: React.FC<DashboardProps> = ({
     [activeTable, language]
   );
 
-  // Initialize/update column visibility when table or language changes
+  // Initialize/update column visibility based on current columns and localStorage
   useEffect(() => {
     const currentTableColumns = getTableColumns(activeTable, language);
-    setColumnVisibility(prevVisibility => {
+    // Load stored visibility again inside useEffect to ensure we have the latest after initial render
+    const storedVisibility = getFromLocalStorage('columnVisibility', {});
+
+    setColumnVisibility(prevCurrentVisibility => {
       const newVisibility: Record<string, boolean> = {};
       currentTableColumns.forEach(col => {
-        // Default 'id' to false (hidden), others to true if not set
-        const defaultVisibility = col.key === 'id' ? false : true;
-        newVisibility[col.key] = prevVisibility[col.key] ?? defaultVisibility;
+        // Prioritize stored value, then current state, then default
+        const storedValue = storedVisibility[col.key];
+        const currentValue = prevCurrentVisibility[col.key];
+        const defaultValue = col.key === 'id' ? false : true;
+
+        // Use stored value if available, otherwise use current value, otherwise use default
+        newVisibility[col.key] = storedValue !== undefined ? storedValue : (currentValue !== undefined ? currentValue : defaultValue);
       });
       return newVisibility;
     });
     // No longer reset filters here to keep them persistent per table
-  }, [activeTable, language]);
+  }, [activeTable, language]); // Rerun when table or language changes
 
   // Load data function (memoized with useCallback)
   const loadData = useCallback(async () => {
@@ -114,7 +150,27 @@ export const Dashboard: React.FC<DashboardProps> = ({
     }
   }, [activeTable, currentPage, searchQuery, language, allActiveFilters, sortConfig, toast]); // Update dependencies
 
-  // Load data when dependencies change
+  // --- Save state to localStorage on change ---
+  useEffect(() => {
+    saveToLocalStorage('language', language);
+  }, [language]);
+
+  useEffect(() => {
+    saveToLocalStorage('allActiveFilters', allActiveFilters);
+  }, [allActiveFilters]);
+
+  useEffect(() => {
+    // We need to save the potentially merged/updated visibility
+    saveToLocalStorage('columnVisibility', columnVisibility);
+  }, [columnVisibility]);
+
+  useEffect(() => {
+    saveToLocalStorage('sortConfig', sortConfig);
+  }, [sortConfig]);
+  // --- End Save state ---
+
+
+  // Load data initially and when dependencies change
   useEffect(() => {
     loadData();
   }, [loadData]); // Use loadData directly as dependency
