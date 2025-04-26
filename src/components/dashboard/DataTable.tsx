@@ -175,24 +175,34 @@ export const DataTable: React.FC<DataTableProps> = ({
               </TableRow>
             ) : (
               data.map((record) => (
-                <TableRow key={record.id}>
+                <TableRow
+                  key={record.id}
+                  onClick={() => onEdit(record)}
+                  className="cursor-pointer hover:bg-muted/50"
+                >
                   {columns.map((column) => (
                     <TableCell key={column.key}>
                       {formatCellData(record, column)}
                     </TableCell>
                   ))}
-                  <TableCell className="space-x-2">
+                  <TableCell className="space-x-2"> {/* Вернули space-x-2 */}
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => onEdit(record)}
+                      onClick={(e) => {
+                        e.stopPropagation(); // Предотвращаем всплытие события до TableRow
+                        onEdit(record);
+                      }}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => onDelete(record)}
+                      onClick={(e) => {
+                        e.stopPropagation(); // Предотвращаем всплытие события до TableRow
+                        onDelete(record);
+                      }}
                       className="text-destructive hover:text-destructive"
                     >
                       <Trash2 className="h-4 w-4" />
