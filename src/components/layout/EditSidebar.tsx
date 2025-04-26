@@ -421,26 +421,42 @@ export const EditSidebar: React.FC<EditSidebarProps> = ({
       
       // Для мультиязычных полей показываем только текущий язык
       if (column.isJsonb && column.language) {
-        const jsonValue = formData[column.key] || {};
-        const languageValue = jsonValue[selectedLanguage] || '';
-        
+        const rawValue = formData[column.key];
+        let displayValue = '';
+
+        // Определяем значение для отображения в поле ввода
+        if (typeof rawValue === 'object' && rawValue !== null) {
+          // Если это объект (ожидаемый JSONB), берем значение для текущего языка
+          displayValue = rawValue[selectedLanguage] || '';
+        } else if (typeof rawValue === 'string') {
+          // Если это строка (неправильный формат), отображаем ее как есть
+          // Это позволит пользователю увидеть и исправить данные
+          displayValue = rawValue;
+        }
+        // В других случаях (null, undefined) displayValue останется ''
+
         return (
           <div key={column.key} className="mb-4">
             <label className="block text-sm font-medium mb-1">{column.label}</label>
-            {column.key === 'info' ? (
+            {column.key === 'info' ? ( // Предполагаем, что 'info' всегда будет JSONB
               <Textarea
-                value={languageValue}
+                value={displayValue} // Используем определенное значение
                 onChange={(e) => handleInputChange(column.key, e.target.value, true)}
                 className="w-full"
                 rows={4}
               />
-            ) : (
+            ) : ( // Для 'name' и других потенциально смешанных полей
               <Input
                 type="text"
-                value={languageValue}
+                value={displayValue} // Используем определенное значение
                 onChange={(e) => handleInputChange(column.key, e.target.value, true)}
                 className="w-full"
               />
+            )}
+            {typeof rawValue === 'string' && column.key === 'name' && ( // Показываем предупреждение, если формат не JSONB для name
+              <p className="text-xs text-destructive mt-1">
+                Ожидался мультиязычный формат, но получена строка. Сохранение перезапишет данные в правильном формате.
+              </p>
             )}
           </div>
         );

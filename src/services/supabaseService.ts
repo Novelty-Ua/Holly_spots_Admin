@@ -34,7 +34,7 @@ export const getTableColumns = (tableName: TableName, language: string = 'ru'): 
     ],
     cities: [
       { key: 'id', label: 'ID', sortable: true },
-      { key: 'name', label: 'Название', isJsonb: false, sortable: true }, 
+      { key: 'name', label: 'Название', isJsonb: true, language, sortable: true }, // Пометили как мультиязычное
       { key: 'info', label: 'Информация', isJsonb: true, language, truncate: true, sortable: false },
       { key: 'spots_count', label: 'Количество объектов', isNumeric: true, sortable: true }, 
       { key: 'routes_count', label: 'Количество маршрутов', isNumeric: true, sortable: true }, 

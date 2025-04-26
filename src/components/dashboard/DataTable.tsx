@@ -66,17 +66,25 @@ export const DataTable: React.FC<DataTableProps> = ({
       return '-';
     }
     
-    // Обработка JSON полей с языками
+    // Обработка JSON полей с языками (или текстовых полей, которые должны быть JSON)
     if (column.isJsonb && column.language) {
-      // Для мультиязычных полей отображаем только нужный язык
-      const langValue = value[column.language];
+      let displayValue = '-';
       
-      // Если нужно обрезать текст
-      if (column.truncate && langValue && typeof langValue === 'string') {
-        return langValue.length > 50 ? `${langValue.substring(0, 50)}...` : langValue;
+      // Проверяем, является ли значение объектом (ожидаемый JSONB)
+      if (typeof value === 'object' && value !== null) {
+        displayValue = value[column.language] || '-'; // Берем значение для нужного языка
+      }
+      // Если это не объект, но строка (неправильный формат, но пытаемся отобразить)
+      else if (typeof value === 'string') {
+        displayValue = value; // Отображаем строку как есть
       }
       
-      return langValue || '-';
+      // Применяем обрезку, если необходимо
+      if (column.truncate && typeof displayValue === 'string') {
+        return displayValue.length > 50 ? `${displayValue.substring(0, 50)}...` : displayValue;
+      }
+      
+      return displayValue;
     }
     
     // Обработка полей типа массив
