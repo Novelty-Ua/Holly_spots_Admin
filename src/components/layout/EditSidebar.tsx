@@ -407,10 +407,15 @@ export const EditSidebar: React.FC<EditSidebarProps> = ({
     }
     
     return columns.map(column => {
-      // Пропускаем id и системные поля при создании новой записи
-      if ((!record && column.key === 'id') || 
-          column.key === 'created_at' || 
-          column.key === 'updated_at') {
+      // Пропускаем id, системные поля и поля счетчиков
+      if (
+        column.key === 'id' ||
+        column.key === 'created_at' ||
+        column.key === 'updated_at' ||
+        column.key === 'spots_count' || // Предполагаемый ключ для "Количество объектов"
+        column.key === 'routes_count' || // Предполагаемый ключ для "Количество маршрутов"
+        column.key === 'events_count'   // Предполагаемый ключ для "Количество событий"
+      ) {
         return null;
       }
       
