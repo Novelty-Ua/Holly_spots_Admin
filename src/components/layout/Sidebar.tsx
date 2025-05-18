@@ -7,6 +7,8 @@ import {
   Route, 
   Calendar, 
   Users,
+  UserCircle, // Added for profiles
+  BookText,   // Added for stories
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
@@ -30,6 +32,8 @@ const navItems: NavItem[] = [
   { id: 'routes', name: 'Маршруты', icon: Route },
   { id: 'events', name: 'События', icon: Calendar },
   { id: 'users', name: 'Пользователи', icon: Users },
+  { id: 'profiles', name: 'Профили', icon: UserCircle },
+  { id: 'stories', name: 'Истории', icon: BookText },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ 

@@ -59,8 +59,33 @@ export const DataTable: React.FC<DataTableProps> = ({
 
   // Функция для форматирования ячейки данных
   const formatCellData = (record: any, column: any) => {
-    const value = record[column.key];
+    const value = record[column.key]; // The original value (e.g., FK ID)
+
+    // Handle foreign key columns first
+    if (column.foreignKey) {
+      // Special handling for 'city' column in 'spots' table using the pre-fetched cityName
+      if (column.key === 'city' && record.cityName) {
+        return record.cityName;
+      }
+
+      // Original logic for other foreign keys (like 'country' in 'cities')
+      const relatedTableKey = column.foreignKey; // e.g., 'countries'
+      const relatedData = record[relatedTableKey]; // e.g., record.countries
+      
+      // Check if related data exists and if its 'name' property is a JSONB object
+      if (relatedData && typeof relatedData === 'object' && relatedData.name && typeof relatedData.name === 'object') {
+        // Extract the name for the current language from the JSONB object
+        const lang = column.language || 'ru';
+        const displayName = relatedData.name[lang];
+        if (typeof displayName === 'string') {
+          return displayName;
+        }
+      }
+      // Fallback: display the original FK ID
+      return value !== null && value !== undefined ? String(value) : '-';
+    }
     
+    // If not a foreign key, proceed with existing logic:
     // Если значение отсутствует
     if (value === null || value === undefined) {
       return '-';
@@ -101,14 +126,20 @@ export const DataTable: React.FC<DataTableProps> = ({
         return new Date(value).toLocaleString();
       }
     }
+
+    // Обработка Geometry полей
+    if (column.isGeometry) {
+      // Просто отображаем плейсхолдер, т.к. рендерить геометрию сложно
+      return '[Координаты]';
+    }
     
-    // Обработка JSON полей (не мультиязычных)
-    if ((column.isJsonb && !column.language) || typeof value === 'object') {
+    // Обработка JSON полей (не мультиязычных и не обработанных ранее как FK или geometry)
+    if ((column.isJsonb && !column.language) || (typeof value === 'object' && !Array.isArray(value))) {
       return JSON.stringify(value).substring(0, 50) + '...';
     }
     
-    // Вывод текстового значения
-    return value;
+    // Вывод текстового значения (или других необработанных типов)
+    return String(value); // Преобразуем в строку на всякий случай
   };
   
   if (isLoading) {

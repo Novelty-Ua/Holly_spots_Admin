@@ -17,7 +17,7 @@ export interface QueryOptions {
 }
 
 // Define allowed table names as a type to fix TypeScript errors
-export type TableName = 'countries' | 'cities' | 'spots' | 'routes' | 'events' | 'users';
+export type TableName = 'countries' | 'cities' | 'spots' | 'routes' | 'events' | 'users' | 'profiles' | 'stories';
 
 // Helper function to get column info (assuming getTableColumns is reliable)
 // Duplicated here for self-containment, ensure consistency or import
@@ -75,6 +75,17 @@ export const getTableColumns = (tableName: TableName, language: string = 'ru'): 
       { key: 'tarif', label: 'Тариф', sortable: true },
       { key: 'points', label: 'Очки', isNumeric: true, sortable: true }, 
       { key: 'created_at', label: 'Дата создания', sortable: true } // Assuming timestamp/date is sortable
+    ],
+    profiles: [ // Placeholder columns
+      { key: 'id', label: 'ID', sortable: true },
+      { key: 'full_name', label: 'Полное имя', sortable: true },
+      { key: 'avatar_url', label: 'Аватар', sortable: false },
+      { key: 'updated_at', label: 'Обновлено', sortable: true },
+    ],
+    stories: [ // Placeholder columns
+      { key: 'id', label: 'ID', sortable: true },
+      { key: 'title', label: 'Заголовок', sortable: true }, // Assuming a title field
+      // Add other relevant story columns here later
     ]
    };
 
@@ -108,9 +119,18 @@ export const fetchTableData = async (
     // Explicitly type the query variable
     let query: PostgrestFilterBuilder<any, any, Record<string, any>[], unknown>;
     
+    // Construct the select string based on the table name
+    let selectString = '*';
+    if (tableName === 'cities') {
+      // Fetch the whole 'name' JSONB object from the related 'countries' table
+      selectString = `*, countries(id, name)`; // Request id and the name object
+    }
+    // Note: We removed the nested select for 'spots' here.
+    // We will fetch related city names in a separate step below.
+
     query = supabase
       .from(tableName)
-      .select('*', { count: 'exact' })
+      .select(selectString, { count: 'exact' }) // selectString is '*' for spots now
       .range(from, to);
 
     // Добавляем поиск (OR across searchable fields)
@@ -184,15 +204,56 @@ export const fetchTableData = async (
        }
     }
 
-    const { data, count, error } = await query;
+    let { data, count, error } = await query;
 
     if (error) {
-      console.error(`Supabase query error:`, JSON.stringify(error, null, 2));
+      console.error(`Supabase query error fetching main data for ${tableName}:`, JSON.stringify(error, null, 2));
       throw error;
     }
 
+    let processedData = data || [];
+
+    // --- Post-processing for related names ---
+    if (tableName === 'spots' && processedData.length > 0) {
+      // 1. Get unique city IDs from the spots data
+      const cityIds = [...new Set(processedData.map(spot => spot.city).filter(id => id != null))];
+
+      if (cityIds.length > 0) {
+        // 2. Fetch corresponding city names
+        const { data: citiesData, error: citiesError } = await supabase
+          .from('cities')
+          .select('id, name') // Select id and the name JSONB object
+          .in('id', cityIds);
+
+        if (citiesError) {
+          console.error(`Supabase query error fetching related cities for spots:`, JSON.stringify(citiesError, null, 2));
+          // Proceed without city names if this fails, maybe log it
+        } else if (citiesData) {
+          // 3. Create a map for quick lookup: cityId -> cityName
+          const cityNamesMap = citiesData.reduce((acc, city) => {
+            if (city.name && typeof city.name === 'object' && city.name[language]) {
+              acc[city.id] = city.name[language]; // Extract name for the current language
+            } else {
+               acc[city.id] = city.id; // Fallback to ID if name is missing/invalid
+            }
+            return acc;
+          }, {} as Record<string, string>);
+
+          // 4. Add cityName to each spot object
+          processedData = processedData.map(spot => ({
+            ...spot,
+            // Use the map to get the name, fallback to the original city ID if not found
+            cityName: cityNamesMap[spot.city] || spot.city
+          }));
+        }
+      }
+    }
+    // Add similar post-processing for 'cities' to fetch country names if needed,
+    // although the nested select seemed to work there. Keeping it simple for now.
+    // --- End of Post-processing ---
+
     return {
-      data: data || [],
+      data: processedData, // Return the processed data with added names
       totalCount: count || 0,
       totalPages: Math.ceil((count || 0) / pageSize)
     };
