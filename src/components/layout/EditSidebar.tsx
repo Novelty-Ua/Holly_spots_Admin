@@ -603,12 +603,13 @@ export const EditSidebar: React.FC<EditSidebarProps> = ({
             <div className="flex flex-wrap gap-2">
               {imageUrls.length > 0 ? (
                 imageUrls.map((url: any, index: number) => (
-                  <img
-                    key={index}
-                    src={url}
-                    alt={`Preview ${index + 1}`}
-                    className="w-20 h-20 object-cover rounded border border-border"
-                  />
+                  <a href={url} target="_blank" rel="noopener noreferrer" key={index} className="relative w-20 h-20 mr-2 mb-2">
+                    <img
+                      src={url}
+                      alt={`Preview ${index + 1}`}
+                      className="w-full h-full object-cover rounded"
+                    />
+                  </a>
                 ))
               ) : (
                 <p className="text-sm text-muted-foreground">Нет изображений</p>
