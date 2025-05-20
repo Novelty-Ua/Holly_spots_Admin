@@ -592,7 +592,48 @@ export const EditSidebar: React.FC<EditSidebarProps> = ({
         );
       }
       
-      // Для полей с типом массив или JSON (кроме мультиязычных) показываем как текст JSON
+      // Для поля с изображениями показываем превью
+      if (column.key === 'images') {
+        const images = formData[column.key];
+        const imageUrls = Array.isArray(images) ? images : (typeof images === 'object' && images !== null ? Object.values(images) : []);
+
+        return (
+          <div key={column.key} className="mb-4">
+            <label className="block text-sm font-medium mb-1">{column.label}</label>
+            <div className="flex flex-wrap gap-2">
+              {imageUrls.length > 0 ? (
+                imageUrls.map((url: any, index: number) => (
+                  <img
+                    key={index}
+                    src={url}
+                    alt={`Preview ${index + 1}`}
+                    className="w-20 h-20 object-cover rounded border border-border"
+                  />
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">Нет изображений</p>
+              )}
+            </div>
+            {/* Оставляем возможность редактировать как текст, если нужно */}
+             <Textarea
+               value={typeof images === 'object' ? JSON.stringify(images, null, 2) : images || ''}
+               onChange={(e) => {
+                 try {
+                   const newValue = JSON.parse(e.target.value);
+                   handleInputChange(column.key, newValue);
+                 } catch {
+                   handleInputChange(column.key, e.target.value);
+                 }
+               }}
+               className="w-full font-mono text-xs mt-2"
+               rows={4}
+               placeholder="Редактировать JSON/массив изображений"
+             />
+          </div>
+        );
+      }
+
+      // Для полей с типом массив или JSON (кроме мультиязычных и изображений) показываем как текст JSON
       if ((column.isArray || (column.isJsonb && !column.language)) && column.key !== 'point') {
         const value = formData[column.key] || '';
         return (
