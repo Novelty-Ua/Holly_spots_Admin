@@ -338,12 +338,10 @@ export const deleteRecord = async (tableName: TableName, id: string) => {
 // Получение связанных записей для редактирования
 export const fetchRelatedRecords = async (tableName: TableName) => {
   try {
-    const selectName = async (relationTable: TableName, lang: string = 'ru') => {
-        const cols = getTableColumns(relationTable, lang);
-        const nameCol = cols.find(c => c.key === 'name');
-        if (nameCol && nameCol.isJsonb) {
-            return `id, name->>'${lang}' as name`;
-        }
+    // Helper function to determine the select string for related entities
+    // Always select 'id' and the full 'name' column.
+    // The calling component (EditSidebar) will handle JSONB parsing if needed.
+    const selectName = async (relationTable: TableName) => {
         return 'id, name';
     };
 

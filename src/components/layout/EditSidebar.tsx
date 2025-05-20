@@ -208,7 +208,13 @@ export const EditSidebar: React.FC<EditSidebarProps> = ({
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">Связанные маршруты</label>
                 <div className="border border-border rounded p-2 max-h-40 overflow-y-auto">
-                  {relatedEntities.routes.map((route: any) => (
+                  {relatedEntities.routes
+                    .sort((a: any, b: any) => {
+                      const nameA = a.name && typeof a.name === 'object' ? a.name[selectedLanguage] || Object.values(a.name)[0] : a.name;
+                      const nameB = b.name && typeof b.name === 'object' ? b.name[selectedLanguage] || Object.values(b.name)[0] : b.name;
+                      return String(nameA).localeCompare(String(nameB), selectedLanguage);
+                    })
+                    .map((route: any) => (
                     <div key={route.id} className="flex items-center mb-1">
                       <Checkbox 
                         id={`route-${route.id}`}
@@ -237,7 +243,13 @@ export const EditSidebar: React.FC<EditSidebarProps> = ({
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">Связанные события</label>
                 <div className="border border-border rounded p-2 max-h-40 overflow-y-auto">
-                  {relatedEntities.events.map((event: any) => (
+                  {relatedEntities.events
+                    .sort((a: any, b: any) => {
+                      const nameA = a.name && typeof a.name === 'object' ? a.name[selectedLanguage] || Object.values(a.name)[0] : a.name;
+                      const nameB = b.name && typeof b.name === 'object' ? b.name[selectedLanguage] || Object.values(b.name)[0] : b.name;
+                      return String(nameA).localeCompare(String(nameB), selectedLanguage);
+                    })
+                    .map((event: any) => (
                     <div key={event.id} className="flex items-center mb-1">
                       <Checkbox 
                         id={`event-${event.id}`}
@@ -271,7 +283,13 @@ export const EditSidebar: React.FC<EditSidebarProps> = ({
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">Связанные объекты</label>
                 <div className="border border-border rounded p-2 max-h-40 overflow-y-auto">
-                  {relatedEntities.spots.map((spot: any) => (
+                  {relatedEntities.spots
+                    .sort((a: any, b: any) => {
+                      const nameA = a.name && typeof a.name === 'object' ? a.name[selectedLanguage] || Object.values(a.name)[0] : a.name;
+                      const nameB = b.name && typeof b.name === 'object' ? b.name[selectedLanguage] || Object.values(b.name)[0] : b.name;
+                      return String(nameA).localeCompare(String(nameB), selectedLanguage);
+                    })
+                    .map((spot: any) => (
                     <div key={spot.id} className="flex items-center mb-1">
                       <Checkbox 
                         id={`spot-${spot.id}`}
@@ -300,7 +318,13 @@ export const EditSidebar: React.FC<EditSidebarProps> = ({
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">Связанные события</label>
                 <div className="border border-border rounded p-2 max-h-40 overflow-y-auto">
-                  {relatedEntities.events.map((event: any) => (
+                  {relatedEntities.events
+                    .sort((a: any, b: any) => {
+                      const nameA = a.name && typeof a.name === 'object' ? a.name[selectedLanguage] || Object.values(a.name)[0] : a.name;
+                      const nameB = b.name && typeof b.name === 'object' ? b.name[selectedLanguage] || Object.values(b.name)[0] : b.name;
+                      return String(nameA).localeCompare(String(nameB), selectedLanguage);
+                    })
+                    .map((event: any) => (
                     <div key={event.id} className="flex items-center mb-1">
                       <Checkbox 
                         id={`event-${event.id}`}
@@ -334,7 +358,13 @@ export const EditSidebar: React.FC<EditSidebarProps> = ({
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">Связанные объекты</label>
                 <div className="border border-border rounded p-2 max-h-40 overflow-y-auto">
-                  {relatedEntities.spots.map((spot: any) => (
+                  {relatedEntities.spots
+                    .sort((a: any, b: any) => {
+                      const nameA = a.name && typeof a.name === 'object' ? a.name[selectedLanguage] || Object.values(a.name)[0] : a.name;
+                      const nameB = b.name && typeof b.name === 'object' ? b.name[selectedLanguage] || Object.values(b.name)[0] : b.name;
+                      return String(nameA).localeCompare(String(nameB), selectedLanguage);
+                    })
+                    .map((spot: any) => (
                     <div key={spot.id} className="flex items-center mb-1">
                       <Checkbox 
                         id={`spot-${spot.id}`}
@@ -363,7 +393,13 @@ export const EditSidebar: React.FC<EditSidebarProps> = ({
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">Связанные маршруты</label>
                 <div className="border border-border rounded p-2 max-h-40 overflow-y-auto">
-                  {relatedEntities.routes.map((route: any) => (
+                  {relatedEntities.routes
+                    .sort((a: any, b: any) => {
+                      const nameA = a.name && typeof a.name === 'object' ? a.name[selectedLanguage] || Object.values(a.name)[0] : a.name;
+                      const nameB = b.name && typeof b.name === 'object' ? b.name[selectedLanguage] || Object.values(b.name)[0] : b.name;
+                      return String(nameA).localeCompare(String(nameB), selectedLanguage);
+                    })
+                    .map((route: any) => (
                     <div key={route.id} className="flex items-center mb-1">
                       <Checkbox 
                         id={`route-${route.id}`}
