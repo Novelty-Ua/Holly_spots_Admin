@@ -208,33 +208,46 @@ export const EditSidebar: React.FC<EditSidebarProps> = ({
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">Связанные маршруты</label>
                 <div className="border border-border rounded p-2 max-h-40 overflow-y-auto">
-                  {relatedEntities.routes
-                    .sort((a: any, b: any) => {
+                  {(() => {
+                    const allRoutes = relatedEntities.routes || [];
+                    const selectedRouteIds = selectedRelations.routes || [];
+
+                    const selectedRoutes = allRoutes.filter((route: any) => selectedRouteIds.includes(route.id));
+                    const unselectedRoutes = allRoutes.filter((route: any) => !selectedRouteIds.includes(route.id));
+
+                    const sortByName = (a: any, b: any) => {
                       const nameA = a.name && typeof a.name === 'object' ? a.name[selectedLanguage] || Object.values(a.name)[0] : a.name;
                       const nameB = b.name && typeof b.name === 'object' ? b.name[selectedLanguage] || Object.values(b.name)[0] : b.name;
                       return String(nameA).localeCompare(String(nameB), selectedLanguage);
-                    })
-                    .map((route: any) => (
-                    <div key={route.id} className="flex items-center mb-1">
-                      <Checkbox 
-                        id={`route-${route.id}`}
-                        checked={selectedRelations.routes?.includes(route.id)}
-                        onCheckedChange={(checked) => {
-                          const routes = [...(selectedRelations.routes || [])];
-                          if (checked) {
-                            routes.push(route.id);
-                          } else {
-                            const index = routes.indexOf(route.id);
-                            if (index !== -1) routes.splice(index, 1);
-                          }
-                          handleRelationChange('routes', routes);
-                        }}
-                      />
-                      <label htmlFor={`route-${route.id}`} className="ml-2 text-sm">
-                        {route.name && typeof route.name === 'object' ? route.name[selectedLanguage] || Object.values(route.name)[0] : route.name}
-                      </label>
-                    </div>
-                  ))}
+                    };
+
+                    const sortedSelectedRoutes = selectedRoutes.sort(sortByName);
+                    const sortedUnselectedRoutes = unselectedRoutes.sort(sortByName);
+
+                    const combinedRoutes = [...sortedSelectedRoutes, ...sortedUnselectedRoutes];
+
+                    return combinedRoutes.map((route: any) => (
+                      <div key={route.id} className="flex items-center mb-1">
+                        <Checkbox
+                          id={`route-${route.id}`}
+                          checked={selectedRouteIds.includes(route.id)}
+                          onCheckedChange={(checked) => {
+                            const routes = [...(selectedRelations.routes || [])];
+                            if (checked) {
+                              routes.push(route.id);
+                            } else {
+                              const index = routes.indexOf(route.id);
+                              if (index !== -1) routes.splice(index, 1);
+                            }
+                            handleRelationChange('routes', routes);
+                          }}
+                        />
+                        <label htmlFor={`route-${route.id}`} className="ml-2 text-sm">
+                          {route.name && typeof route.name === 'object' ? route.name[selectedLanguage] || Object.values(route.name)[0] : route.name}
+                        </label>
+                      </div>
+                    ));
+                  })()}
                 </div>
               </div>
             )}
@@ -243,33 +256,46 @@ export const EditSidebar: React.FC<EditSidebarProps> = ({
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">Связанные события</label>
                 <div className="border border-border rounded p-2 max-h-40 overflow-y-auto">
-                  {relatedEntities.events
-                    .sort((a: any, b: any) => {
+                  {(() => {
+                    const allEvents = relatedEntities.events || [];
+                    const selectedEventIds = selectedRelations.events || [];
+
+                    const selectedEvents = allEvents.filter((event: any) => selectedEventIds.includes(event.id));
+                    const unselectedEvents = allEvents.filter((event: any) => !selectedEventIds.includes(event.id));
+
+                    const sortByName = (a: any, b: any) => {
                       const nameA = a.name && typeof a.name === 'object' ? a.name[selectedLanguage] || Object.values(a.name)[0] : a.name;
                       const nameB = b.name && typeof b.name === 'object' ? b.name[selectedLanguage] || Object.values(b.name)[0] : b.name;
                       return String(nameA).localeCompare(String(nameB), selectedLanguage);
-                    })
-                    .map((event: any) => (
-                    <div key={event.id} className="flex items-center mb-1">
-                      <Checkbox 
-                        id={`event-${event.id}`}
-                        checked={selectedRelations.events?.includes(event.id)}
-                        onCheckedChange={(checked) => {
-                          const events = [...(selectedRelations.events || [])];
-                          if (checked) {
-                            events.push(event.id);
-                          } else {
-                            const index = events.indexOf(event.id);
-                            if (index !== -1) events.splice(index, 1);
-                          }
-                          handleRelationChange('events', events);
-                        }}
-                      />
-                      <label htmlFor={`event-${event.id}`} className="ml-2 text-sm">
-                        {event.name && typeof event.name === 'object' ? event.name[selectedLanguage] || Object.values(event.name)[0] : event.name}
-                      </label>
-                    </div>
-                  ))}
+                    };
+
+                    const sortedSelectedEvents = selectedEvents.sort(sortByName);
+                    const sortedUnselectedEvents = unselectedEvents.sort(sortByName);
+
+                    const combinedEvents = [...sortedSelectedEvents, ...sortedUnselectedEvents];
+
+                    return combinedEvents.map((event: any) => (
+                      <div key={event.id} className="flex items-center mb-1">
+                        <Checkbox
+                          id={`event-${event.id}`}
+                          checked={selectedEventIds.includes(event.id)}
+                          onCheckedChange={(checked) => {
+                            const events = [...(selectedRelations.events || [])];
+                            if (checked) {
+                              events.push(event.id);
+                            } else {
+                              const index = events.indexOf(event.id);
+                              if (index !== -1) events.splice(index, 1);
+                            }
+                            handleRelationChange('events', events);
+                          }}
+                        />
+                        <label htmlFor={`event-${event.id}`} className="ml-2 text-sm">
+                          {event.name && typeof event.name === 'object' ? event.name[selectedLanguage] || Object.values(event.name)[0] : event.name}
+                        </label>
+                      </div>
+                    ));
+                  })()}
                 </div>
               </div>
             )}
@@ -283,33 +309,46 @@ export const EditSidebar: React.FC<EditSidebarProps> = ({
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">Связанные объекты</label>
                 <div className="border border-border rounded p-2 max-h-40 overflow-y-auto">
-                  {relatedEntities.spots
-                    .sort((a: any, b: any) => {
+                  {(() => {
+                    const allSpots = relatedEntities.spots || [];
+                    const selectedSpotIds = selectedRelations.spots || [];
+
+                    const selectedSpots = allSpots.filter((spot: any) => selectedSpotIds.includes(spot.id));
+                    const unselectedSpots = allSpots.filter((spot: any) => !selectedSpotIds.includes(spot.id));
+
+                    const sortByName = (a: any, b: any) => {
                       const nameA = a.name && typeof a.name === 'object' ? a.name[selectedLanguage] || Object.values(a.name)[0] : a.name;
                       const nameB = b.name && typeof b.name === 'object' ? b.name[selectedLanguage] || Object.values(b.name)[0] : b.name;
                       return String(nameA).localeCompare(String(nameB), selectedLanguage);
-                    })
-                    .map((spot: any) => (
-                    <div key={spot.id} className="flex items-center mb-1">
-                      <Checkbox 
-                        id={`spot-${spot.id}`}
-                        checked={selectedRelations.spots?.includes(spot.id)}
-                        onCheckedChange={(checked) => {
-                          const spots = [...(selectedRelations.spots || [])];
-                          if (checked) {
-                            spots.push(spot.id);
-                          } else {
-                            const index = spots.indexOf(spot.id);
-                            if (index !== -1) spots.splice(index, 1);
-                          }
-                          handleRelationChange('spots', spots);
-                        }}
-                      />
-                      <label htmlFor={`spot-${spot.id}`} className="ml-2 text-sm">
-                        {spot.name && typeof spot.name === 'object' ? spot.name[selectedLanguage] || Object.values(spot.name)[0] : spot.name}
-                      </label>
-                    </div>
-                  ))}
+                    };
+
+                    const sortedSelectedSpots = selectedSpots.sort(sortByName);
+                    const sortedUnselectedSpots = unselectedSpots.sort(sortByName);
+
+                    const combinedSpots = [...sortedSelectedSpots, ...sortedUnselectedSpots];
+
+                    return combinedSpots.map((spot: any) => (
+                      <div key={spot.id} className="flex items-center mb-1">
+                        <Checkbox
+                          id={`spot-${spot.id}`}
+                          checked={selectedSpotIds.includes(spot.id)}
+                          onCheckedChange={(checked) => {
+                            const spots = [...(selectedRelations.spots || [])];
+                            if (checked) {
+                              spots.push(spot.id);
+                            } else {
+                              const index = spots.indexOf(spot.id);
+                              if (index !== -1) spots.splice(index, 1);
+                            }
+                            handleRelationChange('spots', spots);
+                          }}
+                        />
+                        <label htmlFor={`spot-${spot.id}`} className="ml-2 text-sm">
+                          {spot.name && typeof spot.name === 'object' ? spot.name[selectedLanguage] || Object.values(spot.name)[0] : spot.name}
+                        </label>
+                      </div>
+                    ));
+                  })()}
                 </div>
               </div>
             )}
@@ -318,33 +357,46 @@ export const EditSidebar: React.FC<EditSidebarProps> = ({
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">Связанные события</label>
                 <div className="border border-border rounded p-2 max-h-40 overflow-y-auto">
-                  {relatedEntities.events
-                    .sort((a: any, b: any) => {
+                  {(() => {
+                    const allEvents = relatedEntities.events || [];
+                    const selectedEventIds = selectedRelations.events || [];
+
+                    const selectedEvents = allEvents.filter((event: any) => selectedEventIds.includes(event.id));
+                    const unselectedEvents = allEvents.filter((event: any) => !selectedEventIds.includes(event.id));
+
+                    const sortByName = (a: any, b: any) => {
                       const nameA = a.name && typeof a.name === 'object' ? a.name[selectedLanguage] || Object.values(a.name)[0] : a.name;
                       const nameB = b.name && typeof b.name === 'object' ? b.name[selectedLanguage] || Object.values(b.name)[0] : b.name;
                       return String(nameA).localeCompare(String(nameB), selectedLanguage);
-                    })
-                    .map((event: any) => (
-                    <div key={event.id} className="flex items-center mb-1">
-                      <Checkbox 
-                        id={`event-${event.id}`}
-                        checked={selectedRelations.events?.includes(event.id)}
-                        onCheckedChange={(checked) => {
-                          const events = [...(selectedRelations.events || [])];
-                          if (checked) {
-                            events.push(event.id);
-                          } else {
-                            const index = events.indexOf(event.id);
-                            if (index !== -1) events.splice(index, 1);
-                          }
-                          handleRelationChange('events', events);
-                        }}
-                      />
-                      <label htmlFor={`event-${event.id}`} className="ml-2 text-sm">
-                        {event.name && typeof event.name === 'object' ? event.name[selectedLanguage] || Object.values(event.name)[0] : event.name}
-                      </label>
-                    </div>
-                  ))}
+                    };
+
+                    const sortedSelectedEvents = selectedEvents.sort(sortByName);
+                    const sortedUnselectedEvents = unselectedEvents.sort(sortByName);
+
+                    const combinedEvents = [...sortedSelectedEvents, ...sortedUnselectedEvents];
+
+                    return combinedEvents.map((event: any) => (
+                      <div key={event.id} className="flex items-center mb-1">
+                        <Checkbox
+                          id={`event-${event.id}`}
+                          checked={selectedEventIds.includes(event.id)}
+                          onCheckedChange={(checked) => {
+                            const events = [...(selectedRelations.events || [])];
+                            if (checked) {
+                              events.push(event.id);
+                            } else {
+                              const index = events.indexOf(event.id);
+                              if (index !== -1) events.splice(index, 1);
+                            }
+                            handleRelationChange('events', events);
+                          }}
+                        />
+                        <label htmlFor={`event-${event.id}`} className="ml-2 text-sm">
+                          {event.name && typeof event.name === 'object' ? event.name[selectedLanguage] || Object.values(event.name)[0] : event.name}
+                        </label>
+                      </div>
+                    ));
+                  })()}
                 </div>
               </div>
             )}
@@ -358,33 +410,46 @@ export const EditSidebar: React.FC<EditSidebarProps> = ({
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">Связанные объекты</label>
                 <div className="border border-border rounded p-2 max-h-40 overflow-y-auto">
-                  {relatedEntities.spots
-                    .sort((a: any, b: any) => {
+                  {(() => {
+                    const allSpots = relatedEntities.spots || [];
+                    const selectedSpotIds = selectedRelations.spots || [];
+
+                    const selectedSpots = allSpots.filter((spot: any) => selectedSpotIds.includes(spot.id));
+                    const unselectedSpots = allSpots.filter((spot: any) => !selectedSpotIds.includes(spot.id));
+
+                    const sortByName = (a: any, b: any) => {
                       const nameA = a.name && typeof a.name === 'object' ? a.name[selectedLanguage] || Object.values(a.name)[0] : a.name;
                       const nameB = b.name && typeof b.name === 'object' ? b.name[selectedLanguage] || Object.values(b.name)[0] : b.name;
                       return String(nameA).localeCompare(String(nameB), selectedLanguage);
-                    })
-                    .map((spot: any) => (
-                    <div key={spot.id} className="flex items-center mb-1">
-                      <Checkbox 
-                        id={`spot-${spot.id}`}
-                        checked={selectedRelations.spots?.includes(spot.id)}
-                        onCheckedChange={(checked) => {
-                          const spots = [...(selectedRelations.spots || [])];
-                          if (checked) {
-                            spots.push(spot.id);
-                          } else {
-                            const index = spots.indexOf(spot.id);
-                            if (index !== -1) spots.splice(index, 1);
-                          }
-                          handleRelationChange('spots', spots);
-                        }}
-                      />
-                      <label htmlFor={`spot-${spot.id}`} className="ml-2 text-sm">
-                        {spot.name && typeof spot.name === 'object' ? spot.name[selectedLanguage] || Object.values(spot.name)[0] : spot.name}
-                      </label>
-                    </div>
-                  ))}
+                    };
+
+                    const sortedSelectedSpots = selectedSpots.sort(sortByName);
+                    const sortedUnselectedSpots = unselectedSpots.sort(sortByName);
+
+                    const combinedSpots = [...sortedSelectedSpots, ...sortedUnselectedSpots];
+
+                    return combinedSpots.map((spot: any) => (
+                      <div key={spot.id} className="flex items-center mb-1">
+                        <Checkbox
+                          id={`spot-${spot.id}`}
+                          checked={selectedSpotIds.includes(spot.id)}
+                          onCheckedChange={(checked) => {
+                            const spots = [...(selectedRelations.spots || [])];
+                            if (checked) {
+                              spots.push(spot.id);
+                            } else {
+                              const index = spots.indexOf(spot.id);
+                              if (index !== -1) spots.splice(index, 1);
+                            }
+                            handleRelationChange('spots', spots);
+                          }}
+                        />
+                        <label htmlFor={`spot-${spot.id}`} className="ml-2 text-sm">
+                          {spot.name && typeof spot.name === 'object' ? spot.name[selectedLanguage] || Object.values(spot.name)[0] : spot.name}
+                        </label>
+                      </div>
+                    ));
+                  })()}
                 </div>
               </div>
             )}
@@ -393,33 +458,46 @@ export const EditSidebar: React.FC<EditSidebarProps> = ({
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">Связанные маршруты</label>
                 <div className="border border-border rounded p-2 max-h-40 overflow-y-auto">
-                  {relatedEntities.routes
-                    .sort((a: any, b: any) => {
+                  {(() => {
+                    const allRoutes = relatedEntities.routes || [];
+                    const selectedRouteIds = selectedRelations.routes || [];
+
+                    const selectedRoutes = allRoutes.filter((route: any) => selectedRouteIds.includes(route.id));
+                    const unselectedRoutes = allRoutes.filter((route: any) => !selectedRouteIds.includes(route.id));
+
+                    const sortByName = (a: any, b: any) => {
                       const nameA = a.name && typeof a.name === 'object' ? a.name[selectedLanguage] || Object.values(a.name)[0] : a.name;
                       const nameB = b.name && typeof b.name === 'object' ? b.name[selectedLanguage] || Object.values(b.name)[0] : b.name;
                       return String(nameA).localeCompare(String(nameB), selectedLanguage);
-                    })
-                    .map((route: any) => (
-                    <div key={route.id} className="flex items-center mb-1">
-                      <Checkbox 
-                        id={`route-${route.id}`}
-                        checked={selectedRelations.routes?.includes(route.id)}
-                        onCheckedChange={(checked) => {
-                          const routes = [...(selectedRelations.routes || [])];
-                          if (checked) {
-                            routes.push(route.id);
-                          } else {
-                            const index = routes.indexOf(route.id);
-                            if (index !== -1) routes.splice(index, 1);
-                          }
-                          handleRelationChange('routes', routes);
-                        }}
-                      />
-                      <label htmlFor={`route-${route.id}`} className="ml-2 text-sm">
-                        {route.name && typeof route.name === 'object' ? route.name[selectedLanguage] || Object.values(route.name)[0] : route.name}
-                      </label>
-                    </div>
-                  ))}
+                    };
+
+                    const sortedSelectedRoutes = selectedRoutes.sort(sortByName);
+                    const sortedUnselectedRoutes = unselectedRoutes.sort(sortByName);
+
+                    const combinedRoutes = [...sortedSelectedRoutes, ...sortedUnselectedRoutes];
+
+                    return combinedRoutes.map((route: any) => (
+                      <div key={route.id} className="flex items-center mb-1">
+                        <Checkbox
+                          id={`route-${route.id}`}
+                          checked={selectedRouteIds.includes(route.id)}
+                          onCheckedChange={(checked) => {
+                            const routes = [...(selectedRelations.routes || [])];
+                            if (checked) {
+                              routes.push(route.id);
+                            } else {
+                              const index = routes.indexOf(route.id);
+                              if (index !== -1) routes.splice(index, 1);
+                            }
+                            handleRelationChange('routes', routes);
+                          }}
+                        />
+                        <label htmlFor={`route-${route.id}`} className="ml-2 text-sm">
+                          {route.name && typeof route.name === 'object' ? route.name[selectedLanguage] || Object.values(route.name)[0] : route.name}
+                        </label>
+                      </div>
+                    ));
+                  })()}
                 </div>
               </div>
             )}
