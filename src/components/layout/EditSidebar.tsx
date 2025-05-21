@@ -603,13 +603,27 @@ export const EditSidebar: React.FC<EditSidebarProps> = ({
             <div className="flex flex-wrap gap-2">
               {imageUrls.length > 0 ? (
                 imageUrls.map((url: any, index: number) => (
-                  <a href={url} target="_blank" rel="noopener noreferrer" key={index} className="relative w-20 h-20 mr-2 mb-2">
-                    <img
-                      src={url}
-                      alt={`Preview ${index + 1}`}
-                      className="w-full h-full object-cover rounded"
-                    />
-                  </a>
+                  <div key={index} className="relative w-20 h-20 mr-2 mb-2 group">
+                    <a href={url} target="_blank" rel="noopener noreferrer" className="block w-full h-full">
+                      <img
+                        src={url}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-full object-cover rounded"
+                      />
+                    </a>
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-1 right-1 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => {
+                        console.log('Attempting to delete image at index:', index);
+                        const updatedUrls = imageUrls.filter((_: any, i: number) => i !== index);
+                        handleInputChange(column.key, updatedUrls, false); // Обрабатываем изображения как простой массив
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
                 ))
               ) : (
                 <p className="text-sm text-muted-foreground">Нет изображений</p>
